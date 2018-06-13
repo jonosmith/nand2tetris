@@ -1,0 +1,12 @@
+/**
+ * Always returns true no irrespective of input
+ */
+
+CHIP AlwaysTrue {
+    IN in;
+    OUT out;
+
+    PARTS:
+        AlwaysFalse(in=in, out=f);
+        Not(in=f, out=out);
+}

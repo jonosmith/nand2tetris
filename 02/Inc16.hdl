@@ -13,5 +13,16 @@ CHIP Inc16 {
     OUT out[16];
 
     PARTS:
-   // Put you code here:
+    // Flip input
+    Not16(in=in, out=notIn);
+
+
+    // Get all 1s
+    Or16(a=in, b=notIn, out=all1s);
+
+    // Add flipped input and all 1s
+    Add16(a=notIn, b=all1s, out=addResult);
+
+    // Flip back
+    Not16(in=addResult, out=out);
 }

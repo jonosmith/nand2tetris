@@ -42,5 +42,23 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
+        // Process input first, Zeroing and Negating if required
+        ZeroNegate16(in=x, zero=zx, negate=nx, out=processedX);
+        ZeroNegate16(in=y, zero=zy, negate=ny, out=processedY);
+
+        // Main Functions - Add or AND
+        Add16(a=processedX, b=processedY, out=opAddResult);
+        And16(a=processedX, b=processedY, out=opAndResult);
+
+        // Choose the function to use
+        Mux16(a=opAndResult, b=opAddResult, sel=f, out=opResult);
+
+        // Negate output if required
+        Not16(in=opResult, out=opResultNegated);
+        Mux16(a=opResult, b=opResultNegated, sel=no, out=out);
+        Mux16(a=opResult, b=opResultNegated, sel=no, out=out2); // Do again for use in working out the output flags
+
+        // Set other output flags
+        IsNegative16(in=out2, out=ng);
+        IsZero16(in=out2, out=zr);
 }

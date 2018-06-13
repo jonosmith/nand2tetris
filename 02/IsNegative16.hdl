@@ -1,0 +1,13 @@
+/**
+ * Determines if the given number is less than 0 or not
+ */
+
+CHIP IsNegative16 {
+    IN in[16];
+    OUT out;
+
+    PARTS:
+        AlwaysTrue(in=in[0], out=t);
+
+        And(a=in[15], b=t, out=out);
+}

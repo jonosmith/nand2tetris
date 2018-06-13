@@ -1,0 +1,21 @@
+/**
+ * Zero out AND/OR negate the given input
+ */
+
+CHIP ZeroNegate16 {
+    IN  in[16],
+        zero,
+        negate;
+    OUT out[16];
+
+    PARTS:
+        // Zeroing
+        Not16(in=in, out=notIn);
+        And16(a=in, b=notIn, out=inZeroed);
+        Mux16(a=in, b=inZeroed, sel=zero, out=maybeZeroed);
+
+
+        // Negating
+        Not16(in=maybeZeroed, out=maybeZeroedNegated);
+        Mux16(a=maybeZeroed, b=maybeZeroedNegated, sel=negate, out=out);
+}

@@ -1,0 +1,11 @@
+/**
+ * Always returns false, irrespective of input
+ */
+
+CHIP AlwaysFalse {
+    IN in;
+    OUT out;
+
+    PARTS:
+        Xor(a=in, b=in, out=out);
+}

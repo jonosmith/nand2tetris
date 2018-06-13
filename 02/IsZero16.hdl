@@ -1,0 +1,12 @@
+/**
+ * Determines if the given input is 0 or not
+ */
+
+CHIP IsZero16 {
+    IN in[16];
+    OUT out;
+
+    PARTS:
+        Or16Way(in=in, out=inOrResult);
+        Not(in=inOrResult, out=out);
+}
