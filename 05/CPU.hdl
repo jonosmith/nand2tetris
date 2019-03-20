@@ -39,5 +39,70 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+
+    // Instruction type
+    Not(in=instruction[15], out=isAInstruction);
+    Not(in=isAInstruction, out=isCInstruction);
+
+    // C Instruction - Destination is A register
+    And(a=isCInstruction, b=instruction[5], out=ALUShouldOutputToARegister);
+
+    //
+    // A Register
+    //
+    Mux16(a=instruction, b=ALUOut, sel=ALUShouldOutputToARegister, out=ARegisterIn);
+    Or(a=isAInstruction, b=ALUShouldOutputToARegister, out=shouldLoadARegister);
+    ARegister(in=ARegisterIn, load=shouldLoadARegister, out=ARegisterOut);
+
+    //
+    // D Register
+    //
+    And(a=isCInstruction, b=instruction[4], out=shouldLoadDRegister);
+    DRegister(in=ALUOut, load=shouldLoadDRegister, out=DRegisterOut);
+
+
+    // A or M selection for ALU
+    Mux16(a=ARegisterOut, b=inM, sel=instruction[12], out=AorMOut);
+
+    //
+    // ALU
+    //
+    ALU(
+        x=DRegisterOut,
+        y=AorMOut,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f=instruction[7],
+        no=instruction[6],
+        out=ALUOut,
+        zr=isOutZero,
+        ng=isOutNegative
+    );
+
+    //
+    // PC
+    //
+    Or(a=isOutNegative, b=isOutZero, out=isOutNegativeOrZero);
+    Not(in=isOutNegativeOrZero, out=isOutPositive);
+
+    // Work out should jump
+    And(a=isOutNegative, b=instruction[2], out=shouldJumpAndOutIsNegative);
+    And(a=isOutZero, b=instruction[1], out=shouldJumpAndOutIsZero);
+    And(a=isOutPositive, b=instruction[0], out=shouldJumpAndOutIsPositive);
+    Or(a=shouldJumpAndOutIsNegative, b=shouldJumpAndOutIsZero, out=shouldJumpAndOutIsZeroOrNegative);
+    Or(a=shouldJumpAndOutIsZeroOrNegative, b=shouldJumpAndOutIsPositive, out=shouldJumpToA);
+    
+    And(a=isCInstruction, b=shouldJumpToA, out=shouldLoadPC);
+    Not(in=shouldLoadPC, out=shouldIncrementPC);
+    PC(in=ARegisterOut, load=shouldLoadPC, inc=shouldIncrementPC, reset=reset, out[0..14]=pc);
+
+    //
+    // Final Output
+    //
+    And(a=isCInstruction, b=instruction[3], out=writeM);
+    Or16(a=false, b=ARegisterOut, out[0..14]=addressM);
+    Or16(a=false, b=ALUOut, out=outM);
+
 }
