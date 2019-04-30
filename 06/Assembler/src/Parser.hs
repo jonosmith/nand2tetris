@@ -51,6 +51,12 @@ data Command
     deriving (Show)
 
 
+data ParsedLine
+    = ParsedLine
+    { parsedLineCommand :: Maybe Command
+    , parsedLineNumber :: Integer
+    }
+
 
 -- FUNCTIONS
 
@@ -58,10 +64,31 @@ data Command
 
 parse :: [String] -> [String]
 parse lines =
-    lines
-    |> Cleaner.clean
+    zip lines [1..]
     |> map parseLine
-    |> map printCommand
+    |> map printParsedLine
+
+
+hasCommand :: ParsedLine -> Bool
+hasCommand parsedLine =
+    case parsedLineCommand parsedLine of
+        Just _ ->
+            True
+        
+        Nothing ->
+            False
+
+printParsedLine :: ParsedLine -> String
+printParsedLine parsedLine =
+    let
+        output = case parsedLineCommand parsedLine of
+            Just command
+                -> printCommand command
+            
+            Nothing
+                -> "LINE SKIPPED"
+    in
+        show (parsedLineNumber parsedLine) ++ ": " ++ output
 
 
 printCommand :: Command -> String
@@ -74,8 +101,30 @@ printCommand command =
             show command
 
 
-parseLine :: String -> Command
-parseLine line
+parseLine :: (String, Integer) -> ParsedLine
+parseLine (line, lineNumber) =
+    let
+        cleanedLine =
+            Cleaner.cleanLine line
+
+        hasCommand =
+            not (null cleanedLine)
+
+        command =
+            if hasCommand then
+                Just (parseCommand cleanedLine)
+            else
+                Nothing
+
+    in
+        ParsedLine
+        { parsedLineCommand = command
+        , parsedLineNumber = lineNumber
+        }
+
+
+parseCommand :: String -> Command
+parseCommand line
     | isPseudoCommand line = parsePseudoCommand line
     | isAInstruction line = parseAInstruction line
     | isCInstruction line = parseCInstruction line

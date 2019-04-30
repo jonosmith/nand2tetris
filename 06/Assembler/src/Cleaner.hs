@@ -3,42 +3,26 @@ Module responsible for cleaning the raw input stream
 -}
 
 module Cleaner (
-    clean
+    cleanLine
 ) where
 
-import Text.Regex.Posix
-import Flow
 import Data.List.Utils (replace)
+import Flow
+import Text.Regex.Posix
 
 
-clean :: [String] -> [String]
-clean lines =
-    lines
+
+cleanLine :: String -> String
+cleanLine line =
+    line
+    |> removeNewlineChar
+    |> removeInlineComment
     |> stripWhitespace
-    |> stripComments
-    |> stripNewlines
-    |> removeBlankLines
 
 
-stripWhitespace :: [String] -> [String]
+stripWhitespace :: String -> String
 stripWhitespace =
-    map (replace " " "")
-
-
-stripNewlines :: [String] -> [String]
-stripNewlines =
-    map removeNewlineChar
-
-
-stripComments :: [String] -> [String]
-stripComments lines =
-    let
-        removedCommentLines = filter (\line -> not (isCommentLine line)) lines
-
-        removedInlineComments =
-            map removeInlineComment removedCommentLines
-    in
-        removedInlineComments
+    replace " " ""
 
 
 removeInlineComment :: String -> String
@@ -57,11 +41,6 @@ removeNewlineChar line =
         before
 
 
-removeBlankLines :: [String] -> [String]
-removeBlankLines =
-    filter (\line -> not (isBlankLine line))
-
-
 isCommentLine :: String -> Bool
 isCommentLine line =
     line =~ "^//" :: Bool
@@ -69,4 +48,4 @@ isCommentLine line =
 
 isBlankLine :: String -> Bool
 isBlankLine line =
-    (line =~ "^\r" :: Bool) || (null line)
+    (line =~ "^\r" :: Bool) || null line
