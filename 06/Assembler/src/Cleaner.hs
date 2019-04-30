@@ -16,20 +16,26 @@ clean lines =
     lines
     |> stripWhitespace
     |> stripComments
+    |> stripNewlines
     |> removeBlankLines
 
 
 stripWhitespace :: [String] -> [String]
-stripWhitespace lines =
-    map (\line -> replace " " "" line) lines
+stripWhitespace =
+    map (replace " " "")
+
+
+stripNewlines :: [String] -> [String]
+stripNewlines =
+    map removeNewlineChar
 
 
 stripComments :: [String] -> [String]
 stripComments lines =
     let
         removedCommentLines = filter (\line -> not (isCommentLine line)) lines
-        
-        removedInlineComments = 
+
+        removedInlineComments =
             map removeInlineComment removedCommentLines
     in
         removedInlineComments
@@ -43,9 +49,17 @@ removeInlineComment line =
         beforeComment
 
 
+removeNewlineChar :: String -> String
+removeNewlineChar line =
+    let
+        (before, _, _) = line =~ "\r" :: (String, String, String)
+    in
+        before
+
+
 removeBlankLines :: [String] -> [String]
-removeBlankLines lines =
-    filter (\line -> not (isBlankLine line)) lines
+removeBlankLines =
+    filter (\line -> not (isBlankLine line))
 
 
 isCommentLine :: String -> Bool
@@ -55,4 +69,4 @@ isCommentLine line =
 
 isBlankLine :: String -> Bool
 isBlankLine line =
-    line =~ "^\r" :: Bool
+    (line =~ "^\r" :: Bool) || (null line)
