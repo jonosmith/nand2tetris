@@ -17,6 +17,7 @@ dependencies:
   - regex-posix
   - flow
   - MissingH
+  - containers
 library:
   source-dirs: src
 executables:
