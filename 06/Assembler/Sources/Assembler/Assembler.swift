@@ -9,30 +9,22 @@
 import Foundation
 
 
-enum OptionType: String {
-  case output = "o"
-  case unknown
-  
-  init(value: String) {
-    switch value {
-    case "o": self = .output
-    default: self = .unknown
-    }
-  }
+enum AssemblerError: Error {
+  case standard(String)
 }
-
 
 
 /**
  Main program logic. Coordinates getting the input from various sources, parsing
  it and output final translates commands
  */
-struct Assembler {
+class Assembler {
   
   /// Outputs extra data for debugging
   public var debug = false
   
-  let consoleIO = ConsoleIO()
+  private let consoleIO = ConsoleIO()
+  private let fileIO = FileIO()
   
   
   // MARK: - Definitions
@@ -40,53 +32,51 @@ struct Assembler {
   private let ramAddressStart = 16
   
   
-  
   // MARK: - Entry
   
+  /// Main flow when given all arguments from command line invocation
   func staticMode() {
     let argCount = CommandLine.argc
     
-    guard argCount > 1 else {
+    guard argCount >= 2 else {
       consoleIO.writeMessage("Too few arguments", to: .error)
       consoleIO.printUsage()
       return
     }
     
+    guard argCount <= 3 else {
+      consoleIO.writeMessage("Too many arguments", to: .error)
+      consoleIO.printUsage()
+      return
+    }
+    
     let inputFile = CommandLine.arguments[1]
+    let maybeOutputFile = argCount == 3 ? CommandLine.arguments[2] : nil
     
     do {
-      let result = try assembler.parse(file: inputFile)
-    
-      print(result.joined(separator: "\n"))
+      let inputLines = try fileIO.readInputFile(inputFile)
+      let outputLines = assembler.parse(input: inputLines)
+      
+      // Output to file if given one
+      if let outputFile = maybeOutputFile {
+        try fileIO.writeOutput(lines: outputLines, filePath: outputFile)
+        
+        if debug {
+          consoleIO.writeMessage(outputLines.joined(separator: "\n"))
+        }
+
+        consoleIO.writeMessage("Done")
+      } else {
+        // Otherwise output to stdout
+        consoleIO.writeMessage(outputLines.joined(separator: "\n"))
+      }
     } catch AssemblerError.standard(let message) {
-      print("Error: \(message)")
+      consoleIO.writeMessage("Error: \(message)", to: .error)
     } catch {
       consoleIO.printUsage()
     }
   }
   
-  func getOption(_ option: String) -> (option: OptionType, value: String) {
-    return (OptionType(value: option), option)
-  }
-  
-  
-  
-  /// Parse the given file
-  func parse(file filePath: String) throws -> [String] {
-    guard let inputLines = getInputLinesFromFile(filePath) else {
-      throw AssemblerError.standard("Could not read the input file")
-    }
-    
-    return parse(input: inputLines)
-  }
-  
-  private func getInputLinesFromFile(_ filePath: String) -> [String]? {
-    if let contents = try? String(contentsOfFile: filePath) {
-      return contents.split(separator: "\r\n").map({ String($0) })
-    }
-    
-    return nil
-  }
   
   // MARK: - Main parsing
   private func parse(input inputLines: [String]) -> [String] {

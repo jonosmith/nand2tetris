@@ -10,7 +10,7 @@ import Foundation
 
 /// The different command types
 enum CommandType {
-  /// An A command eg. `@i`, `@256`
+  /// An A command eg. `@i`, `@256`, `@R4`
   case ADDRESS
   
   /// C command eg. `D=D-M`
@@ -185,10 +185,13 @@ struct Line {
   
   var commandType: CommandType? {
     
-    let isPseudo = cleanLine.range(of: #"^(\({1})[a-zA-Z]+(\){1})$"#, options: .regularExpression) != nil
+    // eg. (LOOP), (OUTPUT_FIRST)
+    let isPseudo = cleanLine.range(of: #"^\(.+\)$"#, options: .regularExpression) != nil
     
-    let isAddress = cleanLine.range(of: #"^\@(\d+|[a-zA-Z]+)$"#, options: .regularExpression) != nil
+    // eg. @i, @256, @R4
+    let isAddress = cleanLine.range(of: #"^\@.+$"#, options: .regularExpression) != nil
     
+    // eg. M=M+1, D;JGT
     let isComputation = cleanLine.range(of: #".+(=|;).+"#, options: .regularExpression) != nil
     
     if isPseudo {

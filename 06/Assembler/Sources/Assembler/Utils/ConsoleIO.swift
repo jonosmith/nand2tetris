@@ -15,15 +15,16 @@ enum OutputType {
 }
 
 
+/// Manages input/outputs for operation in the command line
 class ConsoleIO {
   
   func writeMessage(_ message: String, to: OutputType = .standard) {
     switch to {
     case .standard:
-      print("\u{001B}[;m\(message)")
+      print("\(message)")
       
     case .error:
-      fputs("\u{001B}[0;31m\(message)\n", stderr)
+      fputs("\u{001B}[0;31m\(message)\u{001B}[;m\n", stderr)
     }
   }
   
@@ -32,8 +33,6 @@ class ConsoleIO {
     
     writeMessage("Usage:")
     writeMessage("\(executableName) file.asm -o file.hack")
-    writeMessage("or")
-    writeMessage("\(executableName) -h to show usage information")
   }
   
 }
