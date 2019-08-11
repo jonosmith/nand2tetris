@@ -8,7 +8,7 @@
 
 
 /// Translates Hack assembly language mnemonics into binary codes
-struct Code {
+class Code {
   
   private let destMappings = [
     "M": "001",

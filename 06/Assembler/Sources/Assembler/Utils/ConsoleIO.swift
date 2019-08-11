@@ -32,7 +32,7 @@ class ConsoleIO {
     let executableName = (CommandLine.arguments[0] as NSString).lastPathComponent
     
     writeMessage("Usage:")
-    writeMessage("\(executableName) file.asm -o file.hack")
+    writeMessage("\(executableName) file.asm file.hack")
   }
   
 }

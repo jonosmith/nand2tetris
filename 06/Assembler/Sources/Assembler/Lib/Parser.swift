@@ -22,14 +22,14 @@ enum CommandType {
 
 /// Encapsulates access to the input code. Reads an assembly language command,
 /// parses it, and provides convenient access to the commands
-struct Parser {
+class Parser {
   
   private var lines = [Line]()
   
   // Keeps track of which line we are up to as we are processing
   private var currentIndex = 0
   
-  // The current Line we are up to
+  /// The current Line we are up to
   var currentLine: Line {
     return lines[currentIndex]
   }
@@ -46,13 +46,20 @@ struct Parser {
     }
   }
   
+  /// The current assembly command the Parser is up to
+  func currentCommand() -> String {
+    return currentLine.cleanLine
+  }
+  
+  // MARK: - Control
+  
   /// Determines if there a more valid commands after the current line
   func hasMoreCommands() -> Bool {
     return nextValidCommandIndex() != nil
   }
   
   /// Step forward to the next valid command
-  mutating func advance() {
+  func advance() {
     guard hasMoreCommands() else {
       fatalError(
         "Tried to continue advancing but there are no more valid commands left"
@@ -62,11 +69,7 @@ struct Parser {
     currentIndex = nextValidCommandIndex()!
     
   }
-  
-  mutating func reset() {
-    currentIndex = 0
-  }
-  
+
   private func nextValidCommandIndex() -> Int? {
     if currentIndex >= lines.count {
       return nil
@@ -80,95 +83,39 @@ struct Parser {
     return result
   }
   
-  
-  
-  
   // Returns the type of the current command we are up to
   func commandType() -> CommandType? {
     return currentLine.commandType
   }
   
-  // Returns the symbol or decimal Xxx of the current command @Xxx or (Xxx)
-  // Should be called only when commandType() is A_COMMAND or L_COMMAND
+  
+  // MARK: - Current command parts
+  
+  
+  /// Returns the symbol or decimal Xxx of the current command @Xxx or (Xxx)
+  /// Should be called only when commandType() is A_COMMAND or L_COMMAND
   func symbol() -> String {
-    guard let commandType = currentLine.commandType else {
-      return ""
-    }
-    
-    let text = currentLine.cleanLine
-    
-    switch commandType {
-    case .ADDRESS:
-      return text.replacingOccurrences(of: #"@"#, with: "", options: .regularExpression)
-      
-    case .PSEUDO:
-      let substringMatch = text.range(of: #"(?<=\().+(?=\))"#, options: .regularExpression)
-      
-      if let match = substringMatch {
-        return String(text[match])
-      } else {
-        return text
-      }
-      
-    default:
-      return ""
-    }
+    return currentLine.symbol()
   }
   
-  // Returns the destination mnemonic in the current C-command (8 possibilities).
-  // Should be called only when commandType() is C_COMMAND
+  /// Returns the destination mnemonic in the current C-command (8 possibilities).
+  /// Should be called only when commandType() is C_COMMAND
   func dest() -> String {
-    guard currentLine.commandType == .COMPUTE else {
-      return ""
-    }
-    
-    if let match = currentLine.cleanLine.range(of: #"\w+(?=\=)"#, options: .regularExpression) {
-      return String(currentLine.cleanLine[match])
-    } else {
-      return ""
-    }
+    return currentLine.dest()
   }
   
   
-  // Returns the comp mnemonic in the current C-command (28 possibilities).
-  // Should only be called when commandType() is C_COMMAND
+  /// Returns the comp mnemonic in the current C-command (28 possibilities).
+  /// Should only be called when commandType() is C_COMMAND
   func comp() -> String {
-    guard currentLine.commandType == .COMPUTE else {
-      return ""
-    }
-    
-    if let commandWithJumpMatch = currentLine.cleanLine.range(
-      of: #"(.+)(?=;)"#,
-      options: .regularExpression
-      ) {
-      
-      return String(currentLine.cleanLine[commandWithJumpMatch])
-      
-    } else if let commandWithNoJump = currentLine.cleanLine.range(
-      of: #"(?<=(=)).+"#,
-      options: .regularExpression
-      ) {
-      
-      return String(currentLine.cleanLine[commandWithNoJump])
-      
-    } else {
-      return ""
-    }
+    return currentLine.comp()
   }
   
   
-  // Returns the jump mnemonic in the current C-command (8 possibilities).
-  // Should be called only when commantType() is C_COMMAND
+  /// Returns the jump mnemonic in the current C-command (8 possibilities).
+  /// Should be called only when commantType() is C_COMMAND
   func jump() -> String {
-    guard currentLine.commandType == .COMPUTE else {
-      return ""
-    }
-    
-    if let match = currentLine.cleanLine.range(of: #"(?<=;)\w+"#, options: .regularExpression) {
-      return String(currentLine.cleanLine[match])
-    } else {
-      return ""
-    }
+    return currentLine.jump()
   }
   
 }
@@ -212,6 +159,85 @@ struct Line {
   init(_ line: String) {
     rawLine = line
   }
+  
+  // MARK: - Command mnemonics
+  
+  /// The COMPUTATION mnemonic (if exists)
+  func comp() -> String {
+    guard commandType == .COMPUTE else {
+      return ""
+    }
+    
+    if let commandWithJumpMatch = cleanLine.range(
+      of: #"(.+)(?=;)"#,
+      options: .regularExpression
+      ) {
+      
+      return String(cleanLine[commandWithJumpMatch])
+      
+    } else if let commandWithNoJump = cleanLine.range(
+      of: #"(?<=(=)).+"#,
+      options: .regularExpression
+      ) {
+      
+      return String(cleanLine[commandWithNoJump])
+      
+    } else {
+      return ""
+    }
+  }
+  
+  /// The JUMP mnemonic (if exists)
+  func jump() -> String {
+    guard commandType == .COMPUTE else {
+      return ""
+    }
+    
+    if let match = cleanLine.range(of: #"(?<=;)\w+"#, options: .regularExpression) {
+      return String(cleanLine[match])
+    } else {
+      return ""
+    }
+  }
+  
+  /// The DESTINATION mnemonic (if exists)
+  func dest() -> String {
+    guard commandType == .COMPUTE else {
+      return ""
+    }
+    
+    if let match = cleanLine.range(of: #"\w+(?=\=)"#, options: .regularExpression) {
+      return String(cleanLine[match])
+    } else {
+      return ""
+    }
+  }
+  
+  /// The SYMBOL mnemonic (if exists)
+  func symbol() -> String {
+    guard let commandType = commandType else {
+      return ""
+    }
+    
+    switch commandType {
+    case .ADDRESS:
+      return cleanLine.replacingOccurrences(of: #"@"#, with: "", options: .regularExpression)
+      
+    case .PSEUDO:
+      let substringMatch = cleanLine.range(of: #"(?<=\().+(?=\))"#, options: .regularExpression)
+      
+      if let match = substringMatch {
+        return String(cleanLine[match])
+      } else {
+        return cleanLine
+      }
+      
+    default:
+      return ""
+    }
+  }
+  
+  // MARK: - Helpers
   
   private func stripWhitespace(input: String) -> String {
     return input.replacingOccurrences(of: #"\s"#, with: "", options: .regularExpression)

@@ -14,6 +14,22 @@ enum AssemblerError: Error {
 }
 
 
+/// Holds the original assembly command and output binary instruction
+private struct MachineInstruction {
+  /// Original assembly command
+  let asm: String
+  
+  /// Translated instruction
+  let hack: String
+  
+  /// A pretty print version for debugging
+  var debugPrint: String {
+    return "\(hack.rightPadding(toLength: 18, withPad: " ")) (\(asm))"
+  }
+}
+
+
+
 /**
  Main program logic. Coordinates getting the input from various sources, parsing
  it and output final translates commands
@@ -93,7 +109,7 @@ class Assembler {
   }
   
   private func firstPass(_ inputLines: [String]) -> SymbolTable {
-    var parser = Parser(from: inputLines)
+    let parser = Parser(from: inputLines)
     var symbolTable = SymbolTable()
     
     var nextROMAddress = 0
@@ -120,10 +136,14 @@ class Assembler {
     return symbolTable
   }
   
-  private func secondPass(symbolTable symbolTableWithPseudoCommands: SymbolTable, inputLines: [String]) -> [Output] {
-    var parser = Parser(from: inputLines)
+  private func secondPass(
+    symbolTable symbolTableWithPseudoCommands: SymbolTable,
+    inputLines: [String]
+    ) -> [MachineInstruction] {
+
+    let parser = Parser(from: inputLines)
     let code = Code()
-    var output = [Output]()
+    var output = [MachineInstruction]()
     var symbolTable = symbolTableWithPseudoCommands
     
     // Keep track of free RAM addresses for variables encountered
@@ -136,14 +156,14 @@ class Assembler {
           
           var ramAddress: Int?
           
-          // Check if it is a raw address value
+          // Check if it is a raw address value eg. @256
           if let addressValue = Int(parser.symbol()) {
             
             ramAddress = addressValue
             
           } else {
             
-            // Address is a variable
+            // Address is a variable eg. @i, @LOOP
             if let retrievedAddress = symbolTable.getAddress(for: parser.symbol()) {
               ramAddress = retrievedAddress
             } else {
@@ -161,9 +181,9 @@ class Assembler {
             
             let instruction = "0" + code.address(address)
             output.append(
-              Output(
-                originalLine: parser.currentLine.cleanLine,
-                outputInstruction: instruction
+              MachineInstruction(
+                asm: parser.currentCommand(),
+                hack: instruction
               )
             )
             
@@ -177,9 +197,9 @@ class Assembler {
             + code.jump(mnemonic: parser.jump())
           
           output.append(
-            Output(
-              originalLine: parser.currentLine.cleanLine,
-              outputInstruction: instruction
+            MachineInstruction(
+              asm: parser.currentCommand(),
+              hack: instruction
             )
           )
           
@@ -197,24 +217,14 @@ class Assembler {
     return output
   }
   
-  private func transformForOutput(_ outputList: [Output]) -> [String] {
+  private func transformForOutput(_ outputList: [MachineInstruction]) -> [String] {
     return outputList.map({ (output) in
       if debug {
         return output.debugPrint
       } else {
-        return output.outputInstruction
+        return output.hack
       }
     })
   }
   
-}
-
-
-private struct Output {
-  let originalLine: String
-  let outputInstruction: String
-  
-  var debugPrint: String {
-    return "\(outputInstruction.rightPadding(toLength: 18, withPad: " ")) (\(originalLine))"
-  }
 }

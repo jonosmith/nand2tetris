@@ -10,5 +10,4 @@ import Foundation
 
 
 let assembler = Assembler()
-assembler.debug = false
 assembler.staticMode()

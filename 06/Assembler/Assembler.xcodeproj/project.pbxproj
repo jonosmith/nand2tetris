@@ -89,8 +89,8 @@
 		FB0E4D9922FFB4C0001B8729 /* Lib */ = {
 			isa = PBXGroup;
 			children = (
-				FB0E4D9A22FFB4CE001B8729 /* Code.swift */,
 				FB0E4D9C22FFB4DA001B8729 /* Parser.swift */,
+				FB0E4D9A22FFB4CE001B8729 /* Code.swift */,
 				FB0E4D9E22FFB4E7001B8729 /* SymbolTable.swift */,
 			);
 			path = Lib;
