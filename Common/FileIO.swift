@@ -7,6 +7,10 @@
 
 import Foundation
 
+enum FileIOError: Error {
+  case standard(String)
+}
+
 /// Manages reading and writing files
 class FileIO {
   
@@ -17,7 +21,7 @@ class FileIO {
 
       return contents.split(separator: "\r\n").map({ String($0) })
     } catch {
-      throw AssemblerError.standard("Could not read the input file")
+      throw FileIOError.standard("Could not read the input file")
     }
 
   }
@@ -28,7 +32,7 @@ class FileIO {
         .joined(separator: "\n")
         .write(toFile: filePath, atomically: false, encoding: String.Encoding.utf8)
     } catch let error as NSError {
-      throw AssemblerError.standard("Encountered an error when trying to write the output \(error)")
+      throw FileIOError.standard("Encountered an error when trying to write the output \(error)")
     }
   }
   

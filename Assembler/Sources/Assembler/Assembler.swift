@@ -88,6 +88,8 @@ class Assembler {
       }
     } catch AssemblerError.standard(let message) {
       consoleIO.writeMessage("Error: \(message)", to: .error)
+    } catch FileIOError.standard(let message) {
+      consoleIO.writeMessage("File Error: \(message)", to: .error)
     } catch {
       consoleIO.printUsage()
     }

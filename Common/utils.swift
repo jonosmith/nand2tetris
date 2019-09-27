@@ -47,3 +47,11 @@ extension String {
     }
   }
 }
+
+extension String {
+  func removeFilenameExtension() -> String {
+    let ss = self.prefix(upTo: self.lastIndex { $0 == "." } ?? self.endIndex)
+    
+    return String(ss)
+  }
+}

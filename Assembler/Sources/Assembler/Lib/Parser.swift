@@ -83,13 +83,14 @@ class Parser {
     return result
   }
   
+  
+  // MARK: - Current command parts
+  
+  
   // Returns the type of the current command we are up to
   func commandType() -> CommandType? {
     return currentLine.commandType
   }
-  
-  
-  // MARK: - Current command parts
   
   
   /// Returns the symbol or decimal Xxx of the current command @Xxx or (Xxx)
