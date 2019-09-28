@@ -26,24 +26,22 @@ class CodeWriter {
   var buffer = [String]()
   var customLabelCount = 0
   
-  // MARK: - Definitions
-  
-  let ramAddressStackStart = 256
-  
-  // MARK: Registers
-  let ramStackPointer = 0
-  let ramSegmentLocal = 1
-  let ramSegmentArgument = 2
-  let ramSegmentThis = 3
-  let ramSegmentThat = 4
-  let ramTempSegments = [5, 6, 7, 8, 9, 10, 11, 12]
-  let ramGeneralRegisters = [13, 14, 15]
   
   // MARK: - Setup
   
   
   init(outputDirectory: URL) {
     self.outputDirectory = outputDirectory
+    
+    initializeStackPointer()
+  }
+  
+  /// Initializes the stack pointer to the required address eg. RAM[0] = 256
+  private func initializeStackPointer() {
+    aCommand(String(VM.RAMStackStart))
+    cCommand(comp: "A", dest: "D")
+    aCommand("SP")
+    cCommand(comp: "D", dest: "M")
   }
   
   /**
@@ -51,12 +49,24 @@ class CodeWriter {
    
       - Note: Any subsequent writes will then occur in a new file
    */
-  func setFileName(_ fileName: String) {
-    guard buffer.count == 0 else {
-      fatalError("Something went wrong! Tried to change files but there are unwritten ASM commands in the buffer")
-    }
-    
+  func setFileName(_ fileName: String) throws {
     currentFileName = fileName
+
+    try prepareFileForWriting(fileName)
+  }
+  
+  private func prepareFileForWriting(_ fileName: String) throws {
+    let filePath = outputDirectory.appendingPathComponent(fileName).path
+
+    do {
+      
+      try fileIO.writeOutput(text: "", filePath: filePath, mode: .overwrite)
+      
+    } catch FileIOError.standard(let fileIOErrorMessage) {
+      
+      throw CodeWriterError.outputError(message: fileIOErrorMessage)
+    
+    }
   }
   
   
@@ -71,7 +81,7 @@ class CodeWriter {
     
     do {
       // Write to file
-      try fileIO.writeOutput(lines: buffer, filePath: filePath.absoluteString)
+      try fileIO.writeOutput(lines: buffer, filePath: filePath.path, mode: .append)
       
       // Clear buffer
       buffer.removeAll()
@@ -129,27 +139,17 @@ class CodeWriter {
   
   /// Writes a PUSH command
   private func writePush(segment: String, index: Int) throws {
-    var lines = [String]()
-    
-    // D = index
-    lines.append("@\(index)")
-    lines.append("D=A")
-    
-    // M[SP] = indexF
-    lines.append("@SP")
-    lines.append("A=M")
-    lines.append("M=D")   // M[M[0]] = index
-    
-    // Increment SP
-    lines.append("@SP")
-    lines.append("M=M+1")
+    if segment == "constant" {
+      valueToStack(String(index))
+      incrementSP()
+    }
     
     try flushBufferToFile()
   }
   
   /// Writes a POP command
   private func writePop(segment: String, index: Int) throws {
-
+    
   }
   
   // MARK: Arithmetic Functions
@@ -163,7 +163,7 @@ class CodeWriter {
     cCommand(comp: comp, dest: "D")
     
     // Push back to stack
-    pushToStack("D")
+    compToStack("D")
     
     incrementSP()
   }
@@ -181,7 +181,7 @@ class CodeWriter {
     cCommand(comp: comp, dest: "D")           // D = comp
     
     // Push result to stack
-    pushToStack("D")
+    compToStack("D")
     
     incrementSP()
   }
@@ -204,7 +204,7 @@ class CodeWriter {
     cCommand(comp: "D", jump: jump)       // D;jump
     
     // When result is false
-    pushToStack("0")
+    compToStack("0")
     
     // Shortcut to end
     aCommand(labelForEnd)                 // @COMPARE_RESULT_END
@@ -212,7 +212,7 @@ class CodeWriter {
     
     // When result is true
     labelCommand(labelForResultTrue)
-    pushToStack("1")
+    compToStack("1")
   
     // Finish
     labelCommand(labelForEnd)
@@ -222,9 +222,16 @@ class CodeWriter {
   // MARK: - Stack
   
   /// Push the result of the given computation to the stack
-  private func pushToStack(_ comp: String) {
+  private func compToStack(_ comp: String) {
     loadSP()                              // A = SP
     cCommand(comp: comp, dest: "M")       // M[SP] = comp
+  }
+  
+  /// Push the given value to the top of the stack
+  private func valueToStack(_ value: String) {
+    aCommand(value)
+    cCommand(comp: "A", dest: "D")
+    compToStack("D")
   }
   
   /// Put the value in the top of the stack in the given destination
@@ -250,11 +257,12 @@ class CodeWriter {
     aCommand("SP")
     cCommand(comp: "M-1", dest: "M")
   }
+
   
   // MARK: - Creating commands
   
   private func cCommand(comp: String, dest: String) {
-    cCommand(comp: comp, dest: comp, jump: nil)
+    cCommand(comp: comp, dest: dest, jump: nil)
   }
   
   private func cCommand(comp: String, jump: String) {

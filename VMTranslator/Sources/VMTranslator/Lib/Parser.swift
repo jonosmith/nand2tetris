@@ -20,7 +20,12 @@ class Parser {
   }
   
   init(from inputLines: [String]) {
-    lines = inputLines.map({ Line($0) })
+    // Transform input
+    lines = inputLines.enumerated().map({ (pair) -> Line in
+      let (offset, element) = pair
+      
+      return Line(element, lineNumber: offset + 1)
+    })
     
     // Set current line to first valid command (if there is one)
     if
@@ -98,14 +103,14 @@ class Parser {
    
    - Note: Only applicable for commands `PUSH`, `POP`, `FUNCTION`, `CALL`
   */
-  func arg2() -> String? {
+  func arg2() -> Int? {
     let pieces = currentLine.cleaned.split(separator: " ")
     
     if pieces.count <= 2 {
       return nil
     }
     
-    return String(pieces[2])
+    return Int(pieces[2])
   }
 
 }

@@ -28,11 +28,6 @@ class VMTranslator {
   private let fileManager = FileManager()
   
   
-  // MARK: - Definitions
-  let ramAddressStackStart = 256
-  let ramAddressStackEnd = 2047
-  
-
   // MARK: - Main Translation
 
   
@@ -63,26 +58,55 @@ class VMTranslator {
     
     let outputFilename = getOutputFilename(inputFilePath: URL(fileURLWithPath: filePath))
     
-    codeWriter.setFileName(outputFilename)
+    do {
+      try codeWriter.setFileName(outputFilename)
+    } catch {
+      return consoleIO.writeMessage(
+        """
+        Could not complete translation.
+        
+        Unexpected error trying to setup the file for output:
+        
+        \(error)
+        """
+      )
+    }
     
     let parser = Parser(from: inputLines)
-    
     
     while true {
       if let commandType = parser.commandType() {
         do {
           
-          if commandType == .ARITHMETIC {
+          switch commandType {
+          case .ARITHMETIC:
             try codeWriter.writeArithmetic(command: parser.currentCommand())
+
+          case .PUSH:
+            guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
+              handleInsufficientArguments(currentLine: parser.currentLine, expectedArguments: 2)
+              break
+            }
+            
+            try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
+            
+          default:
+            consoleIO.writeMessage(
+              """
+              Instruction not implemented yet:
+              > \(parser.currentLine.cleaned)
+              """
+            )
           }
+
             
         } catch CodeWriterError.outputError(let outputErrorMessage) {
-          handleCodeWriterOutputError(errorMessage: outputErrorMessage, currentLine: parser.currentLine.original)
+          handleCodeWriterOutputError(errorMessage: outputErrorMessage, currentLine: parser.currentLine)
           
         } catch CodeWriterError.translationError(let translationErrorMessage) {
-          handleCodeWriterTranslationError(errorMessage: translationErrorMessage, currentLine: parser.currentLine.original)
+          handleCodeWriterTranslationError(errorMessage: translationErrorMessage, currentLine: parser.currentLine)
         } catch {
-          handleCodeWriterOtherErrors(currentLine: parser.currentLine.original)
+          handleCodeWriterOtherErrors(currentLine: parser.currentLine)
         }
       }
       
@@ -93,46 +117,65 @@ class VMTranslator {
       }
     }
     
+    consoleIO.writeMessage("File translated: \(outputFilename)")
   }
 }
 
 // MARK: - Error handling
 extension VMTranslator {
   
-  private func handleCodeWriterTranslationError(errorMessage: String, currentLine: String) {
+  private func handleInsufficientArguments(currentLine: Line, expectedArguments: Int) {
+    let message =
+      """
+      Expected \(expectedArguments) for this line:
+      
+      > \(currentLine.original)
+      """
+    
+    consoleIO.writeMessage(message, to: .error)
+  }
+  
+  private func handleCodeWriterTranslationError(errorMessage: String, currentLine: Line) {
     let message =
       """
       Encountered an error trying to translate the line:
-      > \(currentLine)
+      
+      \(printLine(currentLine))
+      
       
       The error was:
       \(errorMessage)
       """
-    
+  
     consoleIO.writeMessage(message, to: .error)
   }
   
-  private func handleCodeWriterOutputError(errorMessage: String, currentLine: String) {
+  private func handleCodeWriterOutputError(errorMessage: String, currentLine: Line) {
     let message =
       """
       Encountered an error trying to translate the line:
-      > \(currentLine)
       
-      Specifically, this error was encountered trying to write to disk:
+      \(printLine(currentLine))
+
+
       \(errorMessage)
       """
     
     consoleIO.writeMessage(message, to: .error)
   }
   
-  private func handleCodeWriterOtherErrors(currentLine: String) {
+  private func handleCodeWriterOtherErrors(currentLine: Line) {
     let message =
       """
       Encountered an error trying to translate the line:
-      > \(currentLine)
+      \(printLine(currentLine))
       """
     
     consoleIO.writeMessage(message, to: .error)
+  }
+  
+  private func printLine(_ line: Line) -> String {
+    return "\(line.lineNumber) |    \(line.original)"
   }
 }
 
@@ -149,7 +192,7 @@ extension VMTranslator {
     let filenameMinusExtension = inputFilenameAndExtension.prefix(upTo: inputFilenameAndExtension.lastIndex { $0 == "." } ?? inputFilenameAndExtension.endIndex)
     let inputFilename = String(filenameMinusExtension)
     
-    return "\(inputFilename).hack"
+    return "\(inputFilename).asm"
   }
 }
 

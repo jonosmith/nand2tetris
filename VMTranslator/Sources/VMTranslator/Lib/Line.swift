@@ -12,17 +12,21 @@ struct Line {
   /// The original line from the input file
   let original: String
   
+  let lineNumber: Int
+  
   /// A cleaned version of the line ready for inspection
   var cleaned: String {
     return original
-      |> stripWhitespace
       |> stripComments
+      |> stripLeadingWhitespace
+      |> stripTrailingWhitespace
   }
   
   // MARK: - Initialize
   
-  init(_ line: String) {
-    original = line
+  init(_ line: String, lineNumber: Int) {
+    self.original = line
+    self.lineNumber = lineNumber
   }
   
   
@@ -74,8 +78,12 @@ struct Line {
   
   // MARK: - Helpers
   
-  private func stripWhitespace(input: String) -> String {
-    return input.replacingOccurrences(of: #"\s"#, with: "", options: .regularExpression)
+  private func stripLeadingWhitespace(input: String) -> String {
+    return input.replacingOccurrences(of: #"^\s+"#, with: "", options: .regularExpression)
+  }
+  
+  private func stripTrailingWhitespace(input: String) -> String {
+    return input.replacingOccurrences(of: #"\s+$"#, with: "", options: .regularExpression)
   }
   
   private func stripComments(input: String) -> String {
