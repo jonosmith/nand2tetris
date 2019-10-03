@@ -72,25 +72,6 @@ class CodeWriter {
   
   // MARK: - Main Interface
   
-  private func flushBufferToFile() throws {
-    guard let fileName = currentFileName else {
-      throw CodeWriterError.outputError(message: "No filename specified to write to")
-    }
-    
-    let filePath = outputDirectory.appendingPathComponent(fileName)
-    
-    do {
-      // Write to file
-      try fileIO.writeOutput(lines: buffer, filePath: filePath.path, mode: .append)
-      
-      // Clear buffer
-      buffer.removeAll()
-      
-    } catch FileIOError.standard(let fileIOErrorMessage) {
-      throw CodeWriterError.outputError(message: fileIOErrorMessage)
-    }
-  }
-  
   /// Writes the assembly code that is the translation of the given arithmetic command
   func writeArithmetic(command: String) throws {
     switch command {
@@ -187,8 +168,9 @@ class CodeWriter {
   }
   
   private func compare(_ jump: String) {
-    let labelForResultTrue = createNewLabel("COMPARE_RESULT_TRUE")
-    let labelForEnd = createNewLabel("COMPARE_END")
+    let labelBase = createNewLabel("COMPARE")
+    let labelForResultTrue = labelBase + "_RESULT_TRUE"
+    let labelForEnd = labelBase + "_COMPARE_END"
     
     // Get Y
     decrementSP()
@@ -198,7 +180,10 @@ class CodeWriter {
     decrementSP()
     stackTo("A")                          // A = SP
     
-    cCommand(comp: "D-A", dest: "D")      // D = D-A
+    // eq: x = y
+    // gt: x > y
+    // lt: x < y
+    cCommand(comp: "A-D", dest: "D")      // D = D-A
     
     aCommand(labelForResultTrue)
     cCommand(comp: "D", jump: jump)       // D;jump
@@ -212,11 +197,11 @@ class CodeWriter {
     
     // When result is true
     labelCommand(labelForResultTrue)
-    compToStack("1")
+    compToStack("-1")
   
     // Finish
     labelCommand(labelForEnd)
-    decrementSP()
+    incrementSP()
   }
   
   // MARK: - Stack
@@ -237,6 +222,7 @@ class CodeWriter {
   /// Put the value in the top of the stack in the given destination
   private func stackTo(_ dest: String) {
     loadSP()
+    
     cCommand(comp: "M", dest: dest)
   }
 
@@ -259,7 +245,7 @@ class CodeWriter {
   }
 
   
-  // MARK: - Creating commands
+  // MARK: - ASM Command creation
   
   private func cCommand(comp: String, dest: String) {
     cCommand(comp: comp, dest: dest, jump: nil)
@@ -297,6 +283,28 @@ class CodeWriter {
     customLabelCount += 1
     
     return name + "_" + String(customLabelCount)
+  }
+  
+  
+  // MARK: - Helpers
+  
+  private func flushBufferToFile() throws {
+    guard let fileName = currentFileName else {
+      throw CodeWriterError.outputError(message: "No filename specified to write to")
+    }
+    
+    let filePath = outputDirectory.appendingPathComponent(fileName)
+    
+    do {
+      // Write to file
+      try fileIO.writeOutput(lines: buffer, filePath: filePath.path, mode: .append)
+      
+      // Clear buffer
+      buffer.removeAll()
+      
+    } catch FileIOError.standard(let fileIOErrorMessage) {
+      throw CodeWriterError.outputError(message: fileIOErrorMessage)
+    }
   }
   
 }
