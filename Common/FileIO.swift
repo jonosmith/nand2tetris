@@ -32,7 +32,10 @@ class FileIO {
     do {
       let contents = try String(contentsOfFile: filePath)
 
-      return contents.split(separator: "\r\n").map({ String($0) })
+      return contents
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .split(separator: "\n").map({ String($0) })
+
     } catch {
       throw FileIOError.standard("Could not read the input file")
     }

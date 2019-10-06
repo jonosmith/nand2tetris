@@ -20,6 +20,9 @@ class VMTranslator {
   /// Outputs extra data for debugging
   public var debug = false
   
+  /// For testing
+  public var shouldInitializeVirtualRAMSegments = false
+  
   public var arguments = [String]()
   
   
@@ -45,6 +48,11 @@ class VMTranslator {
     }
     
     let codeWriter = CodeWriter(outputDirectory: URL(fileURLWithPath: path))
+    
+    // Initialize virtual RAM segments (SP, LCL etc.) if required
+    if shouldInitializeVirtualRAMSegments {
+      codeWriter.initializeVirtualRAMSegments()
+    }
     
     for vmFile in vmFiles {
       translateFile(filePath: vmFile, codeWriter: codeWriter)
@@ -82,19 +90,20 @@ class VMTranslator {
           case .ARITHMETIC:
             try codeWriter.writeArithmetic(command: parser.currentCommand())
 
-          case .PUSH:
+          case .PUSH, .POP:
             guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
               handleInsufficientArguments(currentLine: parser.currentLine, expectedArguments: 2)
               break
             }
             
             try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
-            
+          
           default:
             consoleIO.writeMessage(
               """
-              Instruction not implemented yet:
+              Command type not implemented yet:
               > \(parser.currentLine.cleaned)
+
               """
             )
           }
@@ -130,6 +139,7 @@ extension VMTranslator {
       Expected \(expectedArguments) for this line:
       
       > \(currentLine.original)
+      
       """
     
     consoleIO.writeMessage(message, to: .error)
@@ -138,13 +148,17 @@ extension VMTranslator {
   private func handleCodeWriterTranslationError(errorMessage: String, currentLine: Line) {
     let message =
       """
-      Encountered an error trying to translate the line:
+      
+      
+      Error: \(errorMessage)
+      
+      in
       
       \(printLine(currentLine))
       
       
-      The error was:
-      \(errorMessage)
+      
+      
       """
   
     consoleIO.writeMessage(message, to: .error)
@@ -159,6 +173,7 @@ extension VMTranslator {
 
 
       \(errorMessage)
+      
       """
     
     consoleIO.writeMessage(message, to: .error)
@@ -169,6 +184,7 @@ extension VMTranslator {
       """
       Encountered an error trying to translate the line:
       \(printLine(currentLine))
+      
       """
     
     consoleIO.writeMessage(message, to: .error)
@@ -231,6 +247,11 @@ extension VMTranslator {
       
       let directory = (URL(fileURLWithPath: inputFileOrDirectory)).deletingLastPathComponent()
       let codeWriter = CodeWriter(outputDirectory: directory)
+      
+      // Initialize virtual RAM segments (SP, LCL etc.) if required
+      if shouldInitializeVirtualRAMSegments {
+        codeWriter.initializeVirtualRAMSegments()
+      }
       
       translateFile(filePath: inputFileOrDirectory, codeWriter: codeWriter)
     }

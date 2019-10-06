@@ -32,22 +32,31 @@ class CodeWriter {
   
   init(outputDirectory: URL) {
     self.outputDirectory = outputDirectory
-    
-    initializeStackPointer()
   }
   
-  /// Initializes the stack pointer to the required address eg. RAM[0] = 256
-  private func initializeStackPointer() {
-    aCommand(String(VM.RAMStackStart))
+  /**
+    Initializes the preset RAM segments. Used for testing
+   */
+  func initializeVirtualRAMSegments() {
+    intializePointerValue(pointerName: "SP", value: VM.RAMStackStart)
+    intializePointerValue(pointerName: "LCL", value: VM.RAMLocalSegmentStart)
+    intializePointerValue(pointerName: "ARG", value: VM.RAMArgumentSegmentStart)
+    intializePointerValue(pointerName: "THIS", value: VM.RAMThisSegmentStart)
+    intializePointerValue(pointerName: "THAT", value: VM.RAMThatSegmentStart)
+  }
+  
+  private func intializePointerValue(pointerName: String, value: Int) {
+    aCommand(String(value))
     cCommand(comp: "A", dest: "D")
-    aCommand("SP")
+    aCommand(pointerName)
     cCommand(comp: "D", dest: "M")
   }
   
   /**
-      Sets a new filename
+    Sets a new filename
    
-      - Note: Any subsequent writes will then occur in a new file
+    - Note: Any subsequent writes after setting a new filename will then occur
+            in a new file
    */
   func setFileName(_ fileName: String) throws {
     currentFileName = fileName
@@ -118,22 +127,66 @@ class CodeWriter {
   }
   
   
-  /// Writes a PUSH command
+  /**
+    Push values onto the stack from the given virtual memory segment
+   
+    - Parameter segment: The virtual memory segment to get the value from
+    - Parameter index: The position in the virtual memory segment
+   */
   private func writePush(segment: String, index: Int) throws {
-    if segment == "constant" {
-      valueToStack(String(index))
-      incrementSP()
+    switch segment {
+    case "constant":
+      valueToStack(index)
+    
+    case "local", "argument", "this", "that":
+      memoryToStack(segment: segment, index: index)
+      
+    case "temp":
+      let address = VM.RAMTempSegmentStart + index
+      memoryToStack(address: String(address))
+    
+    case "pointer":
+      let address = VM.RAMPointerSegmentStart + index
+      memoryToStack(address: String(address))
+      
+    default:
+      throw CodeWriterError.translationError(message: "Unrecognised PUSH segment \"" + segment + "\"")
     }
+    
+    incrementSP()
+
+    try flushBufferToFile()
+  }
+  
+  /**
+    Pop values off the stack and into the given virtual memory segment
+ 
+    - Parameter segment: The virtual memory segment to put the value in
+    - Parameter index: The position in the virtual memory segment
+   */
+  private func writePop(segment: String, index: Int) throws {
+    switch segment {
+    case "local", "argument", "this", "that":
+      stackToMemory(segment: segment, index: index)
+    
+    case "temp":
+      let address = VM.RAMTempSegmentStart + index
+      stackToMemory(address: String(address))
+    
+    case "pointer":
+      let address = VM.RAMPointerSegmentStart + index
+      stackToMemory(address: String(address))
+
+    default:
+      throw CodeWriterError.translationError(message: "Unrecognised POP segment \"" + segment + "\"")
+    }
+    
+    decrementSP()
     
     try flushBufferToFile()
   }
   
-  /// Writes a POP command
-  private func writePop(segment: String, index: Int) throws {
-    
-  }
-  
-  // MARK: Arithmetic Functions
+  // MARK: - Arithmetic Functions
 
   private func unary(_ comp: String) {
     // Get Y
@@ -174,26 +227,26 @@ class CodeWriter {
     
     // Get Y
     decrementSP()
-    stackTo("D")                          // A = SP
+    stackTo("D")
     
     // Get X
     decrementSP()
-    stackTo("A")                          // A = SP
+    stackTo("A")
     
     // eq: x = y
     // gt: x > y
     // lt: x < y
-    cCommand(comp: "A-D", dest: "D")      // D = D-A
+    cCommand(comp: "A-D", dest: "D")
     
     aCommand(labelForResultTrue)
-    cCommand(comp: "D", jump: jump)       // D;jump
+    cCommand(comp: "D", jump: jump)
     
     // When result is false
     compToStack("0")
     
     // Shortcut to end
-    aCommand(labelForEnd)                 // @COMPARE_RESULT_END
-    cCommand(comp: "0", jump: "JMP")      // 0;JMP
+    aCommand(labelForEnd)
+    cCommand(comp: "0", jump: "JMP")
     
     // When result is true
     labelCommand(labelForResultTrue)
@@ -203,8 +256,8 @@ class CodeWriter {
     labelCommand(labelForEnd)
     incrementSP()
   }
-  
-  // MARK: - Stack
+    
+  // MARK: - To Stack
   
   /// Push the result of the given computation to the stack
   private func compToStack(_ comp: String) {
@@ -212,12 +265,37 @@ class CodeWriter {
     cCommand(comp: comp, dest: "M")       // M[SP] = comp
   }
   
-  /// Push the given value to the top of the stack
-  private func valueToStack(_ value: String) {
-    aCommand(value)
+  /// Push the given constant value to the top of the stack
+  private func valueToStack(_ value: Int) {
+    aCommand(String(value))
     cCommand(comp: "A", dest: "D")
     compToStack("D")
   }
+  
+  private func memoryToStack(segment: String, index: Int) {
+    guard let segmentPointerAddress = getSegmentPointerAddress(segment) else {
+      fatalError("Could not determine the address for given segment \"\(segment)\"")
+    }
+    
+    // Get value from memory segment
+    loadPointerForSegment(segmentPointerAddress: segmentPointerAddress, index: index)
+    cCommand(comp: "M", dest: "D")
+    
+    // Add value to top of stack
+    compToStack("D")
+  }
+  
+  private func memoryToStack(address: String) {
+    // Get value from memory
+    aCommand(address)
+    cCommand(comp: "M", dest: "D")
+    
+    // Add value to top of stack
+    compToStack("D")
+  }
+
+  
+  // MARK: From Stack
   
   /// Put the value in the top of the stack in the given destination
   private func stackTo(_ dest: String) {
@@ -225,14 +303,64 @@ class CodeWriter {
     
     cCommand(comp: "M", dest: dest)
   }
-
   
+  /**
+    Grab the value from the top of the stack and put it into the given segment
+   */
+  private func stackToMemory(segment: String, index: Int = 0) {
+    guard let segmentPointerAddress = getSegmentPointerAddress(segment) else {
+      fatalError("Could not determine the address for given segment \"\(segment)\"")
+    }
+    
+    // Get address of destination segment and store in a temp spot
+    loadPointerForSegment(segmentPointerAddress: segmentPointerAddress, index: index)    // A = M[segment] + index
+    cCommand(comp: "A", dest: "D")
+    aCommand(VirtualRegister.VM1)
+    cCommand(comp: "D", dest: "M")
+    
+    // Grab value from stack
+    decrementSP()
+    stackTo("D")
+    incrementSP()
+    
+    // Get segment address again
+    aCommand(VirtualRegister.VM1)
+    cCommand(comp: "M", dest: "A")
+    
+    // Put stack value into segment at desired index
+    cCommand(comp: "D", dest: "M")
+  }
+  
+  private func stackToMemory(address: String) {
+    // Grab value from stack
+    decrementSP()
+    stackTo("D")
+    incrementSP()
+    
+    // Put stack value into given memory location
+    aCommand(address)
+    cCommand(comp: "D", dest: "M")
+  }
+  
+  // MARK: - Virtual Memory Segments
+
   /// Load the current stack pointer value into A
   private func loadSP() {
     aCommand("SP")
     cCommand(comp: "M", dest: "A")
   }
   
+  private func loadPointerForSegment(segmentPointerAddress: String, index: Int) {
+    aCommand(segmentPointerAddress)
+    cCommand(comp: "M", dest: "D")
+    
+    if index > 0 {
+      aCommand(String(index))
+      cCommand(comp: "D+A", dest: "A")
+    } else {
+      cCommand(comp: "D", dest: "A")
+    }
+  }
   
   private func incrementSP() {
     aCommand("SP")
@@ -304,6 +432,28 @@ class CodeWriter {
       
     } catch FileIOError.standard(let fileIOErrorMessage) {
       throw CodeWriterError.outputError(message: fileIOErrorMessage)
+    }
+  }
+  
+  /**
+    Gets the address for the pointer to the given segment ie. local -> LCL
+   */
+  private func getSegmentPointerAddress(_ segment: String) -> String? {
+    switch segment {
+    case "local":
+      return "LCL"
+    
+    case "argument":
+      return "ARG"
+    
+    case "this":
+      return "THIS"
+    
+    case "that":
+      return "THAT"
+      
+    default:
+      return nil
     }
   }
   
