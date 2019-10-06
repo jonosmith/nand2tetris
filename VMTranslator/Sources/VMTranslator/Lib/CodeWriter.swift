@@ -22,6 +22,7 @@ class CodeWriter {
   
   let outputDirectory: URL
   var currentFileName: String?
+  var outputFileExtension = "asm"
   
   var buffer = [String]()
   var customLabelCount = 0
@@ -61,11 +62,11 @@ class CodeWriter {
   func setFileName(_ fileName: String) throws {
     currentFileName = fileName
 
-    try prepareFileForWriting(fileName)
+    try prepareFileForWriting(fileName: fileName)
   }
   
-  private func prepareFileForWriting(_ fileName: String) throws {
-    let filePath = outputDirectory.appendingPathComponent(fileName).path
+  private func prepareFileForWriting(fileName: String) throws {
+    let filePath = getOutputFilePath(fileName: fileName)
 
     do {
       
@@ -148,6 +149,9 @@ class CodeWriter {
     case "pointer":
       let address = VM.RAMPointerSegmentStart + index
       memoryToStack(address: String(address))
+    
+    case "static":
+      variableToStack(index: index)
       
     default:
       throw CodeWriterError.translationError(message: "Unrecognised PUSH segment \"" + segment + "\"")
@@ -176,6 +180,9 @@ class CodeWriter {
     case "pointer":
       let address = VM.RAMPointerSegmentStart + index
       stackToMemory(address: String(address))
+    
+    case "static":
+      stackToVariable(index: index)
 
     default:
       throw CodeWriterError.translationError(message: "Unrecognised POP segment \"" + segment + "\"")
@@ -293,6 +300,19 @@ class CodeWriter {
     // Add value to top of stack
     compToStack("D")
   }
+  
+  private func variableToStack(index: Int) {
+    guard let fileName = currentFileName else {
+      fatalError("Current filename not set")
+    }
+    
+    // Assign the value of the variable to the D register
+    aCommand(getStaticVariableName(fileName: fileName, index: index))
+    cCommand(comp: "M", dest: "D")
+    
+    // Now push it to the stack
+    compToStack("D")
+  }
 
   
   // MARK: From Stack
@@ -339,6 +359,21 @@ class CodeWriter {
     
     // Put stack value into given memory location
     aCommand(address)
+    cCommand(comp: "D", dest: "M")
+  }
+  
+  private func stackToVariable(index: Int) {
+    guard let fileName = currentFileName else {
+      fatalError("Current filename not set")
+    }
+    
+    // Grab value from stack
+    decrementSP()
+    stackTo("D")
+    incrementSP()
+    
+    // Assign it to the given variable's memory location
+    aCommand(getStaticVariableName(fileName: fileName, index: index))
     cCommand(comp: "D", dest: "M")
   }
   
@@ -421,11 +456,11 @@ class CodeWriter {
       throw CodeWriterError.outputError(message: "No filename specified to write to")
     }
     
-    let filePath = outputDirectory.appendingPathComponent(fileName)
+    let filePath = getOutputFilePath(fileName: fileName)
     
     do {
       // Write to file
-      try fileIO.writeOutput(lines: buffer, filePath: filePath.path, mode: .append)
+      try fileIO.writeOutput(lines: buffer, filePath: filePath, mode: .append)
       
       // Clear buffer
       buffer.removeAll()
@@ -455,6 +490,14 @@ class CodeWriter {
     default:
       return nil
     }
+  }
+  
+  private func getOutputFilePath(fileName: String) -> String {
+    return outputDirectory.appendingPathComponent(fileName + "." + outputFileExtension).path
+  }
+  
+  private func getStaticVariableName(fileName: String, index: Int) -> String {
+    return fileName + "." + String(index)
   }
   
 }

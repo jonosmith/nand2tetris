@@ -206,9 +206,8 @@ extension VMTranslator {
     let inputFilenameAndExtension = inputFilePath.lastPathComponent
     
     let filenameMinusExtension = inputFilenameAndExtension.prefix(upTo: inputFilenameAndExtension.lastIndex { $0 == "." } ?? inputFilenameAndExtension.endIndex)
-    let inputFilename = String(filenameMinusExtension)
     
-    return "\(inputFilename).asm"
+    return String(filenameMinusExtension)
   }
 }
 
