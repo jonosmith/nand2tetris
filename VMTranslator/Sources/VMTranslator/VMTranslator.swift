@@ -8,13 +8,6 @@
 import Foundation
 
 
-
-enum VMTranslatorError: Error {
-  case standard(String)
-}
-
-
-
 class VMTranslator {
   
   /// Outputs extra data for debugging
@@ -54,31 +47,27 @@ class VMTranslator {
       codeWriter.initializeVirtualRAMSegments()
     }
     
-    for vmFile in vmFiles {
-      translateFile(filePath: vmFile, codeWriter: codeWriter)
+    do {
+      for vmFile in vmFiles {
+        try translateFile(filePath: vmFile, codeWriter: codeWriter)
+        
+        consoleIO.writeMessage("File translated: \(vmFile)")
+      }
+    } catch {
+      consoleIO.writeMessage(error.localizedDescription, to: .error)
     }
   }
   
-  private func translateFile(filePath: String, codeWriter: CodeWriter) {
+  private func translateFile(filePath: String, codeWriter: CodeWriter) throws {
     guard let inputLines = try? fileIO.readInputFile(filePath) else {
-      return consoleIO.writeMessage("Could not read the file \(filePath)", to: .error)
+      throw VMTranslatorError.inputError(file: filePath)
     }
     
-    let outputFilename = getOutputFilename(inputFilePath: URL(fileURLWithPath: filePath))
+    let inputFileURL = URL(fileURLWithPath: filePath)
     
-    do {
-      try codeWriter.setFileName(outputFilename)
-    } catch {
-      return consoleIO.writeMessage(
-        """
-        Could not complete translation.
-        
-        Unexpected error trying to setup the file for output:
-        
-        \(error)
-        """
-      )
-    }
+    let outputFilename = getOutputFilename(inputFileURL: inputFileURL)
+    
+    try codeWriter.setFileName(outputFilename)
     
     let parser = Parser(from: inputLines)
     
@@ -92,30 +81,33 @@ class VMTranslator {
 
           case .PUSH, .POP:
             guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
-              handleInsufficientArguments(currentLine: parser.currentLine, expectedArguments: 2)
-              break
+              throw VMTranslatorError.lineTranslationError(
+                errorMessage: "Insufficient arguments",
+                line: parser.currentLine,
+                fileName: inputFileURL.lastPathComponent
+              )
             }
             
             try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
           
           default:
-            consoleIO.writeMessage(
-              """
-              Command type not implemented yet:
-              > \(parser.currentLine.cleaned)
-
-              """
+            throw VMTranslatorError.lineTranslationError(
+              errorMessage: "Command type not implemented yet",
+              line: parser.currentLine,
+              fileName: inputFileURL.lastPathComponent
             )
           }
-
-            
-        } catch CodeWriterError.outputError(let outputErrorMessage) {
-          handleCodeWriterOutputError(errorMessage: outputErrorMessage, currentLine: parser.currentLine)
           
-        } catch CodeWriterError.translationError(let translationErrorMessage) {
-          handleCodeWriterTranslationError(errorMessage: translationErrorMessage, currentLine: parser.currentLine)
+        } catch CodeWriterError.translationError(let message) {
+          // Convert CodeWriter translation errors into an error with more context
+          throw VMTranslatorError.lineTranslationError(
+            errorMessage: message,
+            line: parser.currentLine,
+            fileName: inputFileURL.lastPathComponent
+          )
         } catch {
-          handleCodeWriterOtherErrors(currentLine: parser.currentLine)
+          // Pass up to stop current file translation and output error
+          throw error
         }
       }
       
@@ -125,75 +117,9 @@ class VMTranslator {
         break
       }
     }
-    
-    consoleIO.writeMessage("File translated: \(outputFilename)")
   }
 }
 
-// MARK: - Error handling
-extension VMTranslator {
-  
-  private func handleInsufficientArguments(currentLine: Line, expectedArguments: Int) {
-    let message =
-      """
-      Expected \(expectedArguments) for this line:
-      
-      > \(currentLine.original)
-      
-      """
-    
-    consoleIO.writeMessage(message, to: .error)
-  }
-  
-  private func handleCodeWriterTranslationError(errorMessage: String, currentLine: Line) {
-    let message =
-      """
-      
-      
-      Error: \(errorMessage)
-      
-      in
-      
-      \(printLine(currentLine))
-      
-      
-      
-      
-      """
-  
-    consoleIO.writeMessage(message, to: .error)
-  }
-  
-  private func handleCodeWriterOutputError(errorMessage: String, currentLine: Line) {
-    let message =
-      """
-      Encountered an error trying to translate the line:
-      
-      \(printLine(currentLine))
-
-
-      \(errorMessage)
-      
-      """
-    
-    consoleIO.writeMessage(message, to: .error)
-  }
-  
-  private func handleCodeWriterOtherErrors(currentLine: Line) {
-    let message =
-      """
-      Encountered an error trying to translate the line:
-      \(printLine(currentLine))
-      
-      """
-    
-    consoleIO.writeMessage(message, to: .error)
-  }
-  
-  private func printLine(_ line: Line) -> String {
-    return "\(line.lineNumber) |    \(line.original)"
-  }
-}
 
 // MARK: - Helpers
 extension VMTranslator {
@@ -202,14 +128,16 @@ extension VMTranslator {
     return NSURL(fileURLWithPath: file).pathExtension == "vm"
   }
   
-  private func getOutputFilename(inputFilePath: URL) -> String {
-    let inputFilenameAndExtension = inputFilePath.lastPathComponent
+  private func getOutputFilename(inputFileURL: URL) -> String {
+    let inputFilenameAndExtension = inputFileURL.lastPathComponent
     
     let filenameMinusExtension = inputFilenameAndExtension.prefix(upTo: inputFilenameAndExtension.lastIndex { $0 == "." } ?? inputFilenameAndExtension.endIndex)
     
     return String(filenameMinusExtension)
   }
+  
 }
+
 
 // MARK: - Available flows
 extension VMTranslator {
@@ -252,7 +180,11 @@ extension VMTranslator {
         codeWriter.initializeVirtualRAMSegments()
       }
       
-      translateFile(filePath: inputFileOrDirectory, codeWriter: codeWriter)
+      do {
+        try translateFile(filePath: inputFileOrDirectory, codeWriter: codeWriter)
+      } catch {
+        consoleIO.writeMessage(error.localizedDescription, to: .error)
+      }
     }
     
   }

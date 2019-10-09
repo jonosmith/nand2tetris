@@ -8,13 +8,8 @@
 import Foundation
 
 enum CodeWriterError: Error {
-  /// Any errors related to output (writing to disk)
-  case outputError(message: String)
-  
-  /// Any errors with the actual conversion to assembly instructions
-  case translationError(message: String)
+  case translationError(String)
 }
-
 
 class CodeWriter {
   
@@ -74,7 +69,7 @@ class CodeWriter {
       
     } catch FileIOError.standard(let fileIOErrorMessage) {
       
-      throw CodeWriterError.outputError(message: fileIOErrorMessage)
+      throw VMTranslatorError.outputError(errorMessage: fileIOErrorMessage)
     
     }
   }
@@ -107,7 +102,7 @@ class CodeWriter {
       compare("JLT")
       
     default:
-      throw CodeWriterError.translationError(message: "Unrecognised arithmetic command '\(command)'")
+      throw CodeWriterError.translationError("Unrecognised arithmetic command '\(command)'")
     }
     
     try flushBufferToFile()
@@ -123,7 +118,7 @@ class CodeWriter {
       try writePop(segment: segment, index: index)
 
     default:
-      throw CodeWriterError.translationError(message: "Invalid command type supplied to writePushPop()")
+      fatalError("Invalid command type supplied to writePushPop()")
     }
   }
   
@@ -154,7 +149,7 @@ class CodeWriter {
       variableToStack(index: index)
       
     default:
-      throw CodeWriterError.translationError(message: "Unrecognised PUSH segment \"" + segment + "\"")
+      throw CodeWriterError.translationError("Unrecognised PUSH segment \"" + segment + "\"")
     }
     
     incrementSP()
@@ -185,7 +180,7 @@ class CodeWriter {
       stackToVariable(index: index)
 
     default:
-      throw CodeWriterError.translationError(message: "Unrecognised POP segment \"" + segment + "\"")
+      throw CodeWriterError.translationError("Unrecognised POP segment \"" + segment + "\"")
     }
     
     decrementSP()
@@ -453,7 +448,7 @@ class CodeWriter {
   
   private func flushBufferToFile() throws {
     guard let fileName = currentFileName else {
-      throw CodeWriterError.outputError(message: "No filename specified to write to")
+      throw VMTranslatorError.outputError(errorMessage: "No filename specified to write to")
     }
     
     let filePath = getOutputFilePath(fileName: fileName)
@@ -466,7 +461,7 @@ class CodeWriter {
       buffer.removeAll()
       
     } catch FileIOError.standard(let fileIOErrorMessage) {
-      throw CodeWriterError.outputError(message: fileIOErrorMessage)
+      throw VMTranslatorError.outputError(errorMessage: fileIOErrorMessage)
     }
   }
   
