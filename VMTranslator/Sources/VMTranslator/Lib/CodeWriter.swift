@@ -13,6 +13,8 @@ enum CodeWriterError: Error {
 
 class CodeWriter {
   
+  var debug = false
+  
   let fileIO = FileIO()
   
   let outputDirectory: URL
@@ -79,6 +81,10 @@ class CodeWriter {
   
   /// Writes the assembly code that is the translation of the given arithmetic command
   func writeArithmetic(command: String) throws {
+    if debug {
+      comment("writeArithmetic: command=\(command)")
+    }
+    
     switch command {
     case "add":
       binary("D+A")
@@ -130,6 +136,10 @@ class CodeWriter {
     - Parameter index: The position in the virtual memory segment
    */
   private func writePush(segment: String, index: Int) throws {
+    if debug {
+      comment("writePush: segment=\(segment), index=\(String(index))")
+    }
+    
     switch segment {
     case "constant":
       valueToStack(index)
@@ -164,6 +174,10 @@ class CodeWriter {
     - Parameter index: The position in the virtual memory segment
    */
   private func writePop(segment: String, index: Int) throws {
+    if debug {
+      comment("writePop: segment=\(segment), index=\(String(index))")
+    }
+    
     switch segment {
     case "local", "argument", "this", "that":
       stackToMemory(segment: segment, index: index)
@@ -188,9 +202,50 @@ class CodeWriter {
     try flushBufferToFile()
   }
   
+  func writeLabel(_ label: String) throws {
+    if debug {
+      comment("writeLabel: label=\(label)")
+    }
+    
+    labelCommand(label)
+    
+    try flushBufferToFile()
+  }
+  
+  func writeGoto(_ label: String) throws {
+    if debug {
+      comment("writeGoto: label=\(label)")
+    }
+    
+    aCommand(label)
+    cCommand(comp: "0", jump: "JMP")
+    
+    try flushBufferToFile()
+  }
+  
+  func writeIf(_ label: String) throws {
+    if debug {
+      comment("writeIf: label=\(label)")
+    }
+    
+    // Pop last value off stack
+    decrementSP()
+    stackTo("D")
+    
+    // If != 0, goto given label
+    aCommand(label)
+    cCommand(comp: "D", jump: "JNE")
+    
+    try flushBufferToFile()
+  }
+  
   // MARK: - Arithmetic Functions
 
   private func unary(_ comp: String) {
+    if debug {
+      comment("unary: comp=\(comp)")
+    }
+    
     // Get Y
     decrementSP()
     stackTo("D")
@@ -205,16 +260,20 @@ class CodeWriter {
   }
   
   private func binary(_ comp: String) {
+    if debug {
+      comment("binary: comp=\(comp)")
+    }
+    
     // Get Y
     decrementSP()
-    stackTo("D")                        // A = SP
+    stackTo("D")                            // A = SP
     
     // Get X
     decrementSP()
-    stackTo("A")                        // A = SP
+    stackTo("A")                            // A = SP
     
     // Do computation
-    cCommand(comp: comp, dest: "D")           // D = comp
+    cCommand(comp: comp, dest: "D")         // D = comp
     
     // Push result to stack
     compToStack("D")
@@ -223,6 +282,10 @@ class CodeWriter {
   }
   
   private func compare(_ jump: String) {
+    if debug {
+      comment("compare: jump=\(jump)")
+    }
+    
     let labelBase = createNewLabel("COMPARE")
     let labelForResultTrue = labelBase + "_RESULT_TRUE"
     let labelForEnd = labelBase + "_COMPARE_END"
@@ -327,6 +390,10 @@ class CodeWriter {
       fatalError("Could not determine the address for given segment \"\(segment)\"")
     }
     
+    if debug {
+      comment("stackToMemory: segment=\(segment), index=\(String(index))")
+    }
+    
     // Get address of destination segment and store in a temp spot
     loadPointerForSegment(segmentPointerAddress: segmentPointerAddress, index: index)    // A = M[segment] + index
     cCommand(comp: "A", dest: "D")
@@ -347,6 +414,10 @@ class CodeWriter {
   }
   
   private func stackToMemory(address: String) {
+    if debug {
+      comment("stackToMemory: address=\(address)")
+    }
+    
     // Grab value from stack
     decrementSP()
     stackTo("D")
@@ -360,6 +431,10 @@ class CodeWriter {
   private func stackToVariable(index: Int) {
     guard let fileName = currentFileName else {
       fatalError("Current filename not set")
+    }
+    
+    if debug {
+      comment("stackToVariable: index=\(String(index))")
     }
     
     // Grab value from stack
@@ -441,6 +516,10 @@ class CodeWriter {
     customLabelCount += 1
     
     return name + "_" + String(customLabelCount)
+  }
+  
+  private func comment(_ comment: String) {
+    buffer.append("// " + comment)
   }
   
   

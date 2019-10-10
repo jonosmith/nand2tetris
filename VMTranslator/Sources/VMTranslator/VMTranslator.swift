@@ -41,6 +41,9 @@ class VMTranslator {
     }
     
     let codeWriter = CodeWriter(outputDirectory: URL(fileURLWithPath: path))
+    if debug {
+      codeWriter.debug = true
+    }
     
     // Initialize virtual RAM segments (SP, LCL etc.) if required
     if shouldInitializeVirtualRAMSegments {
@@ -71,6 +74,16 @@ class VMTranslator {
     
     let parser = Parser(from: inputLines)
     
+    
+    func handleInvalidArgs() -> VMTranslatorError {
+      return VMTranslatorError.lineTranslationError(
+        errorMessage: "Invalid arguments",
+        line: parser.currentLine,
+        fileName: inputFileURL.lastPathComponent
+      )
+    }
+    
+    
     while true {
       if let commandType = parser.commandType() {
         do {
@@ -81,14 +94,31 @@ class VMTranslator {
 
           case .PUSH, .POP:
             guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
-              throw VMTranslatorError.lineTranslationError(
-                errorMessage: "Insufficient arguments",
-                line: parser.currentLine,
-                fileName: inputFileURL.lastPathComponent
-              )
+              throw handleInvalidArgs()
             }
             
             try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
+          
+          case .LABEL:
+            guard let arg1 = parser.arg1() else {
+              throw handleInvalidArgs()
+            }
+            
+            try codeWriter.writeLabel(arg1)
+          
+          case .GOTO:
+            guard let arg1 = parser.arg1() else {
+              throw handleInvalidArgs()
+            }
+            
+            try codeWriter.writeGoto(arg1)
+          
+          case .IF:
+            guard let arg1 = parser.arg1() else {
+              throw handleInvalidArgs()
+            }
+            
+            try codeWriter.writeIf(arg1)
           
           default:
             throw VMTranslatorError.lineTranslationError(
@@ -174,6 +204,9 @@ extension VMTranslator {
       
       let directory = (URL(fileURLWithPath: inputFileOrDirectory)).deletingLastPathComponent()
       let codeWriter = CodeWriter(outputDirectory: directory)
+      if debug {
+        codeWriter.debug = true
+      }
       
       // Initialize virtual RAM segments (SP, LCL etc.) if required
       if shouldInitializeVirtualRAMSegments {

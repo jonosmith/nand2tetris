@@ -55,8 +55,11 @@ struct Line {
     case "label":
       return .LABEL
     
-    case "goto", "if-goto":
+    case "goto":
       return .GOTO
+    
+    case "if-goto":
+      return .IF
       
     case "function":
       return .FUNCTION
