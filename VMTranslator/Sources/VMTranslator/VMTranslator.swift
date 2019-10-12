@@ -75,6 +75,18 @@ class VMTranslator {
     let parser = Parser(from: inputLines)
     
     
+    while true {
+      try translateCommand(parser: parser, codeWriter: codeWriter, inputFileURL: inputFileURL)
+      
+      if parser.hasMoreCommands() {
+        parser.advance()
+      } else {
+        break
+      }
+    }
+  }
+  
+  private func translateCommand(parser: Parser, codeWriter: CodeWriter, inputFileURL: URL) throws {
     func handleInvalidArgs() -> VMTranslatorError {
       return VMTranslatorError.lineTranslationError(
         errorMessage: "Invalid arguments",
@@ -83,68 +95,69 @@ class VMTranslator {
       )
     }
     
-    
-    while true {
-      if let commandType = parser.commandType() {
-        do {
-          
-          switch commandType {
-          case .ARITHMETIC:
-            try codeWriter.writeArithmetic(command: parser.currentCommand())
+    if let commandType = parser.commandType() {
+      do {
+        
+        switch commandType {
+        case .ARITHMETIC:
+          try codeWriter.writeArithmetic(command: parser.currentCommand())
 
-          case .PUSH, .POP:
-            guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
-              throw handleInvalidArgs()
-            }
-            
-            try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
-          
-          case .LABEL:
-            guard let arg1 = parser.arg1() else {
-              throw handleInvalidArgs()
-            }
-            
-            try codeWriter.writeLabel(arg1)
-          
-          case .GOTO:
-            guard let arg1 = parser.arg1() else {
-              throw handleInvalidArgs()
-            }
-            
-            try codeWriter.writeGoto(arg1)
-          
-          case .IF:
-            guard let arg1 = parser.arg1() else {
-              throw handleInvalidArgs()
-            }
-            
-            try codeWriter.writeIf(arg1)
-          
-          default:
-            throw VMTranslatorError.lineTranslationError(
-              errorMessage: "Command type not implemented yet",
-              line: parser.currentLine,
-              fileName: inputFileURL.lastPathComponent
-            )
+        case .PUSH, .POP:
+          guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
+            throw handleInvalidArgs()
           }
           
-        } catch CodeWriterError.translationError(let message) {
-          // Convert CodeWriter translation errors into an error with more context
+          try codeWriter.writePushPop(commandType: commandType, segment: arg1, index: arg2)
+        
+        case .LABEL:
+          guard let arg1 = parser.arg1() else {
+            throw handleInvalidArgs()
+          }
+          
+          try codeWriter.writeLabel(arg1)
+        
+        case .GOTO:
+          guard let arg1 = parser.arg1() else {
+            throw handleInvalidArgs()
+          }
+          
+          try codeWriter.writeGoto(arg1)
+        
+        case .IF:
+          guard let arg1 = parser.arg1() else {
+            throw handleInvalidArgs()
+          }
+          
+          try codeWriter.writeIf(arg1)
+        
+        case .FUNCTION:
+          guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
+            throw handleInvalidArgs()
+          }
+          
+          try codeWriter.writeFunction(functionName: arg1, numLocals: arg2)
+        
+        case .RETURN:
+          try codeWriter.writeReturn()
+        
+        default:
           throw VMTranslatorError.lineTranslationError(
-            errorMessage: message,
+            errorMessage: "Command type not implemented yet",
             line: parser.currentLine,
             fileName: inputFileURL.lastPathComponent
           )
-        } catch {
-          // Pass up to stop current file translation and output error
-          throw error
         }
-      }
-      
-      if parser.hasMoreCommands() {
-        parser.advance()
-      } else {
-        break
+        
+      } catch CodeWriterError.translationError(let message) {
+        // Convert CodeWriter translation errors into an error with more context
+        throw VMTranslatorError.lineTranslationError(
+          errorMessage: message,
+          line: parser.currentLine,
+          fileName: inputFileURL.lastPathComponent
+        )
+      } catch {
+        // Pass up to stop current file translation and output error
+        throw error
       }
     }
   }

@@ -239,6 +239,100 @@ class CodeWriter {
     try flushBufferToFile()
   }
   
+  func writeFunction(functionName: String, numLocals: Int) throws {
+    guard let fileName = currentFileName else {
+      fatalError("Current filename not set")
+    }
+    
+    if numLocals <= 0 {
+      throw CodeWriterError.translationError("Number of local variables must be greater than zero")
+    }
+    
+    if debug {
+      comment("writeFunction: functionName=\(functionName), numLocals=\(numLocals)")
+    }
+    
+    let functionLabel = fileName + "." + functionName
+    
+    // Create label for function entry
+    labelCommand(functionLabel)
+    
+    // Allocate local variables
+    if numLocals > 0 {
+      for _ in 0..<numLocals {
+        valueToStack(0)
+        incrementSP()
+      }
+    }
+    
+    try flushBufferToFile()
+  }
+  
+  func writeReturn() throws {
+    if debug {
+      comment("writeReturn")
+    }
+    
+    let FRAMEAddr = VirtualRegister.VM1
+    let RETURNAddr = VirtualRegister.VM2
+    
+    // FRAME = LCL
+    aCommand("LCL")
+    cCommand(comp: "M", dest: "D")
+    aCommand(FRAMEAddr)
+    cCommand(comp: "D", dest: "M")
+    
+    // Get Return address
+    aCommand("5")
+    cCommand(comp: "D-A", dest: "A")
+    cCommand(comp: "M", dest: "D")
+    aCommand(RETURNAddr)
+    cCommand(comp: "D", dest: "M")
+    
+    // Get return value for this function from the top of the stack and place in correct position for the caller
+    decrementSP()
+    stackTo("D")
+    aCommand("ARG")
+    cCommand(comp: "M", dest: "A")
+    cCommand(comp: "D", dest: "M")
+    
+    // Restore SP = ARG + 1
+    aCommand("ARG")
+    cCommand(comp: "M", dest: "A")
+    cCommand(comp: "A+1", dest: "D")
+    aCommand("SP")
+    cCommand(comp: "D", dest: "M")
+    
+    // Restore THAT = M[FRAME - 1]
+    restoreFunctionSegment(segmentName: "THAT", FRAMEAddr: FRAMEAddr, offset: 1)
+    
+    // Restore THIS = M[FRAME - 2]
+    restoreFunctionSegment(segmentName: "THIS", FRAMEAddr: FRAMEAddr, offset: 2)
+    
+    // Restore ARG = M[FRAME - 3]
+    restoreFunctionSegment(segmentName: "ARG", FRAMEAddr: FRAMEAddr, offset: 3)
+    
+    // Restore LCL = M[FRAME - 4]
+    restoreFunctionSegment(segmentName: "LCL", FRAMEAddr: FRAMEAddr, offset: 4)
+    
+    // Jump to the return address given by the caller
+    aCommand(RETURNAddr)
+    cCommand(comp: "M", dest: "A")
+    jump()
+    
+    try flushBufferToFile()
+  }
+  
+  private func restoreFunctionSegment(segmentName: String, FRAMEAddr: String, offset: Int) {
+    aCommand(FRAMEAddr)                   // A = Address where FRAME is stored
+    cCommand(comp: "M", dest: "D")        // D = FRAME
+    aCommand(String(offset))
+    cCommand(comp: "D-A", dest: "A")      // A = FRAME - offset
+    cCommand(comp: "M", dest: "D")        // D = M[FRAME - offset]
+    aCommand(segmentName)
+    cCommand(comp: "D", dest: "M")
+  }
+  
   // MARK: - Arithmetic Functions
 
   private func unary(_ comp: String) {
@@ -478,7 +572,7 @@ class CodeWriter {
   }
 
   
-  // MARK: - ASM Command creation
+  // MARK: - Core ASM Commands
   
   private func cCommand(comp: String, dest: String) {
     cCommand(comp: comp, dest: dest, jump: nil)
@@ -522,6 +616,9 @@ class CodeWriter {
     buffer.append("// " + comment)
   }
   
+  private func jump() {
+    cCommand(comp: "0", jump: "JMP")
+  }
   
   // MARK: - Helpers
   
