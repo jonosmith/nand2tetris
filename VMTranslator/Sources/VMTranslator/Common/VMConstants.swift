@@ -23,3 +23,8 @@ enum VirtualRegister {
   static let VM2 = "R14"
   static let VM3 = "R15"
 }
+
+enum FileExtensions {
+  static let input = "vm"
+  static let output = "asm"
+}

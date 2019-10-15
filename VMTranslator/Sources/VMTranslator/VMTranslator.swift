@@ -13,9 +13,6 @@ class VMTranslator {
   /// Outputs extra data for debugging
   public var debug = false
   
-  /// For testing
-  public var shouldInitializeVirtualRAMSegments = false
-  
   public var arguments = [String]()
   
   
@@ -42,23 +39,19 @@ class VMTranslator {
       return consoleIO.writeMessage("No valid VM files found in the given directory", to: .error)
     }
     
-    let codeWriter = CodeWriter(outputDirectory: pathURL)
+    let codeWriter = CodeWriter()
     codeWriter.debug = debug
     codeWriter.writeInit()
     
-    // Initialize virtual RAM segments (SP, LCL etc.) if required
-    if shouldInitializeVirtualRAMSegments {
-      codeWriter.initializeVirtualRAMSegments()
-    }
-    
     do {
-      try codeWriter.setFileName(getOutputFilename(inputFileURL: pathURL))
+      // Translate entire directory, outputting to a single file
+  
+      try codeWriter.setOutputFilePath(getOutputFilePathFrom(directoryURL: pathURL))
       
       for vmFile in vmFiles {
         let filePath = pathURL.appendingPathComponent(vmFile).path
-        try translateFile(filePath: filePath, codeWriter: codeWriter)
         
-        consoleIO.writeMessage("File translated: \(vmFile)")
+        try translateFile(filePath: filePath, codeWriter: codeWriter)
       }
     } catch {
       consoleIO.writeMessage(error.localizedDescription, to: .error)
@@ -66,13 +59,15 @@ class VMTranslator {
   }
   
   private func translateFile(filePath: String, codeWriter: CodeWriter) throws {
+    let inputFileURL = URL(fileURLWithPath: filePath)
+
     guard let inputLines = try? fileIO.readInputFile(filePath) else {
       throw VMTranslatorError.inputError(file: filePath)
     }
     
-    let inputFileURL = URL(fileURLWithPath: filePath)
-    
     let parser = Parser(from: inputLines)
+    
+    codeWriter.setFileName(getOutputFilenameFrom(inputFileURL: inputFileURL))
     
     while true {
       try translateCommand(parser: parser, codeWriter: codeWriter, inputFileURL: inputFileURL)
@@ -83,6 +78,8 @@ class VMTranslator {
         break
       }
     }
+    
+    consoleIO.writeMessage("File translated: \(inputFileURL.lastPathComponent)")
   }
   
   private func translateCommand(parser: Parser, codeWriter: CodeWriter, inputFileURL: URL) throws {
@@ -171,12 +168,18 @@ extension VMTranslator {
     return NSURL(fileURLWithPath: file).pathExtension == "vm"
   }
   
-  private func getOutputFilename(inputFileURL: URL) -> String {
-    let inputFilenameAndExtension = inputFileURL.lastPathComponent
+  private func getOutputFilePathFrom(directoryURL: URL) -> String {
+    let folderName = directoryURL.lastPathComponent
     
-    let filenameMinusExtension = inputFilenameAndExtension.prefix(upTo: inputFilenameAndExtension.lastIndex { $0 == "." } ?? inputFilenameAndExtension.endIndex)
-    
-    return String(filenameMinusExtension)
+    return directoryURL.appendingPathComponent(folderName).appendingPathExtension(FileExtensions.output).path
+  }
+  
+  private func getOutputFilePathFrom(fileURL: URL) -> String {
+    return fileURL.deletingPathExtension().appendingPathExtension(FileExtensions.output).path
+  }
+  
+  private func getOutputFilenameFrom(inputFileURL: URL) -> String {
+    return inputFileURL.deletingPathExtension().lastPathComponent
   }
   
 }
@@ -215,13 +218,11 @@ extension VMTranslator {
         return consoleIO.writeMessage("The given file is not a valid VM file", to: .error)
       }
       
-      let directory = (URL(fileURLWithPath: inputFileOrDirectory)).deletingLastPathComponent()
-      
-      let codeWriter = CodeWriter(outputDirectory: directory)
+      let codeWriter = CodeWriter()
       codeWriter.debug = debug
       
       do {
-        try codeWriter.setFileName(getOutputFilename(inputFileURL: URL(fileURLWithPath: inputFileOrDirectory)))
+        try codeWriter.setOutputFilePath(getOutputFilePathFrom(fileURL: URL(fileURLWithPath: inputFileOrDirectory)))
         
         try translateFile(filePath: inputFileOrDirectory, codeWriter: codeWriter)
       } catch {

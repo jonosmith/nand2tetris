@@ -17,9 +17,15 @@ class CodeWriter {
   
   let fileIO = FileIO()
   
-  let outputDirectory: URL
+  /**
+    The output file to write to
+   */
+  private var outputFilePath: String?
+  
+  /**
+    The file currently being translated
+   */
   var currentFileName: String?
-  var outputFileExtension = "asm"
   
   var buffer = [String]()
   
@@ -27,54 +33,47 @@ class CodeWriter {
   var lastFunctionEncountered: String?
   
   
-  // MARK: - Setup
-  
-  
-  init(outputDirectory: URL) {
-    self.outputDirectory = outputDirectory
-  }
+  // MARK: - Output
   
   /**
-    Initializes the preset RAM segments. Used for testing
+    Set the current file being translated
    */
-  func initializeVirtualRAMSegments() {
-    intializePointerValue(pointerName: "SP", value: VM.RAMStackStart)
-    intializePointerValue(pointerName: "LCL", value: VM.RAMLocalSegmentStart)
-    intializePointerValue(pointerName: "ARG", value: VM.RAMArgumentSegmentStart)
-    intializePointerValue(pointerName: "THIS", value: VM.RAMThisSegmentStart)
-    intializePointerValue(pointerName: "THAT", value: VM.RAMThatSegmentStart)
-  }
-  
-  private func intializePointerValue(pointerName: String, value: Int) {
-    aCommand(String(value))
-    cCommand(comp: "A", dest: "D")
-    aCommand(pointerName)
-    cCommand(comp: "D", dest: "M")
-  }
-  
-  /**
-    Sets a new filename
-   
-    - Note: Any subsequent writes after setting a new filename will then occur
-            in a new file
-   */
-  func setFileName(_ fileName: String) throws {
+  func setFileName(_ fileName: String) {
     currentFileName = fileName
-
-    try prepareFileForWriting(fileName: fileName)
   }
   
-  private func prepareFileForWriting(fileName: String) throws {
-    let filePath = getOutputFilePath(fileName: fileName)
-
+  func setOutputFilePath(_ filePath: String) throws {
+    outputFilePath = filePath
+    
+    try prepareFileForWriting(filePath: filePath)
+  }
+  
+  private func prepareFileForWriting(filePath: String) throws {
     do {
-      
+      // Create blank file, erasing a previous one if it exists
       try fileIO.writeOutput(text: "", filePath: filePath, mode: .overwrite)
       
     } catch FileIOError.standard(let fileIOErrorMessage) {
       
       throw VMTranslatorError.outputError(errorMessage: fileIOErrorMessage)
     
+    }
+  }
+  
+  private func flushBufferToFile() throws {
+    guard let filePath = outputFilePath else {
+      throw VMTranslatorError.outputError(errorMessage: "No output file path specified to write to")
+    }
+    
+    do {
+      // Write to file
+      try fileIO.writeOutput(lines: buffer, filePath: filePath, mode: .append)
+      
+      // Clear buffer
+      buffer.removeAll()
+      
+    } catch FileIOError.standard(let fileIOErrorMessage) {
+      throw VMTranslatorError.outputError(errorMessage: fileIOErrorMessage)
     }
   }
   
@@ -172,7 +171,7 @@ class CodeWriter {
       memoryToStack(address: String(address))
     
     case "static":
-      variableToStack(index: index)
+      staticToStack(index: index)
       
     default:
       throw CodeWriterError.translationError("Unrecognised PUSH segment \"" + segment + "\"")
@@ -207,7 +206,7 @@ class CodeWriter {
       stackToMemory(address: String(address))
     
     case "static":
-      stackToVariable(index: index)
+      stackToStatic(index: index)
 
     default:
       throw CodeWriterError.translationError("Unrecognised POP segment \"" + segment + "\"")
@@ -505,9 +504,13 @@ class CodeWriter {
     compToStack("D")
   }
   
-  private func variableToStack(index: Int) {
+  private func staticToStack(index: Int) {
     guard let fileName = currentFileName else {
       fatalError("Current filename not set")
+    }
+    
+    if debug {
+      comment("staticToStack: index=\(String(index))")
     }
     
     // Assign the value of the variable to the D register
@@ -572,13 +575,13 @@ class CodeWriter {
     cCommand(comp: "D", dest: "M")
   }
   
-  private func stackToVariable(index: Int) {
+  private func stackToStatic(index: Int) {
     guard let fileName = currentFileName else {
       fatalError("Current filename not set")
     }
     
     if debug {
-      comment("stackToVariable: index=\(String(index))")
+      comment("stackToStatic: index=\(String(index))")
     }
     
     // Grab value from stack
@@ -679,25 +682,6 @@ class CodeWriter {
   
   // MARK: - Helpers
   
-  private func flushBufferToFile() throws {
-    guard let fileName = currentFileName else {
-      throw VMTranslatorError.outputError(errorMessage: "No filename specified to write to")
-    }
-    
-    let filePath = getOutputFilePath(fileName: fileName)
-    
-    do {
-      // Write to file
-      try fileIO.writeOutput(lines: buffer, filePath: filePath, mode: .append)
-      
-      // Clear buffer
-      buffer.removeAll()
-      
-    } catch FileIOError.standard(let fileIOErrorMessage) {
-      throw VMTranslatorError.outputError(errorMessage: fileIOErrorMessage)
-    }
-  }
-  
   /**
     Gets the address for the pointer to the given segment ie. local -> LCL
    */
@@ -720,9 +704,9 @@ class CodeWriter {
     }
   }
   
-  private func getOutputFilePath(fileName: String) -> String {
-    return outputDirectory.appendingPathComponent(fileName + "." + outputFileExtension).path
-  }
+//  private func getOutputFilePathFrom(currentFileName fileName: String) -> String {
+//    return outputDirectory.appendingPathComponent(fileName + "." + FileExtensions.output).path
+//  }
   
   private func getStaticVariableName(fileName: String, index: Int) -> String {
     return fileName + "." + String(index)
