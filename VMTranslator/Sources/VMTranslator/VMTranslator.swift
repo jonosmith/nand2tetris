@@ -28,6 +28,8 @@ class VMTranslator {
 
   
   private func translateDirectory(path: String) {
+    let pathURL = URL(fileURLWithPath: path)
+    
     let maybeContents = try? fileManager.contentsOfDirectory(atPath: path)
     
     guard let contents = maybeContents else {
@@ -40,10 +42,9 @@ class VMTranslator {
       return consoleIO.writeMessage("No valid VM files found in the given directory", to: .error)
     }
     
-    let codeWriter = CodeWriter(outputDirectory: URL(fileURLWithPath: path))
-    if debug {
-      codeWriter.debug = true
-    }
+    let codeWriter = CodeWriter(outputDirectory: pathURL)
+    codeWriter.debug = debug
+    codeWriter.writeInit()
     
     // Initialize virtual RAM segments (SP, LCL etc.) if required
     if shouldInitializeVirtualRAMSegments {
@@ -51,8 +52,11 @@ class VMTranslator {
     }
     
     do {
+      try codeWriter.setFileName(getOutputFilename(inputFileURL: pathURL))
+      
       for vmFile in vmFiles {
-        try translateFile(filePath: vmFile, codeWriter: codeWriter)
+        let filePath = pathURL.appendingPathComponent(vmFile).path
+        try translateFile(filePath: filePath, codeWriter: codeWriter)
         
         consoleIO.writeMessage("File translated: \(vmFile)")
       }
@@ -68,12 +72,7 @@ class VMTranslator {
     
     let inputFileURL = URL(fileURLWithPath: filePath)
     
-    let outputFilename = getOutputFilename(inputFileURL: inputFileURL)
-    
-    try codeWriter.setFileName(outputFilename)
-    
     let parser = Parser(from: inputLines)
-    
     
     while true {
       try translateCommand(parser: parser, codeWriter: codeWriter, inputFileURL: inputFileURL)
@@ -140,12 +139,13 @@ class VMTranslator {
         case .RETURN:
           try codeWriter.writeReturn()
         
-        default:
-          throw VMTranslatorError.lineTranslationError(
-            errorMessage: "Command type not implemented yet",
-            line: parser.currentLine,
-            fileName: inputFileURL.lastPathComponent
-          )
+        case .CALL:
+          guard let arg1 = parser.arg1(), let arg2 = parser.arg2() else {
+            throw handleInvalidArgs()
+          }
+          
+          try codeWriter.writeCall(functionName: arg1, numArgs: arg2)
+        
         }
         
       } catch CodeWriterError.translationError(let message) {
@@ -216,17 +216,13 @@ extension VMTranslator {
       }
       
       let directory = (URL(fileURLWithPath: inputFileOrDirectory)).deletingLastPathComponent()
-      let codeWriter = CodeWriter(outputDirectory: directory)
-      if debug {
-        codeWriter.debug = true
-      }
       
-      // Initialize virtual RAM segments (SP, LCL etc.) if required
-      if shouldInitializeVirtualRAMSegments {
-        codeWriter.initializeVirtualRAMSegments()
-      }
+      let codeWriter = CodeWriter(outputDirectory: directory)
+      codeWriter.debug = debug
       
       do {
+        try codeWriter.setFileName(getOutputFilename(inputFileURL: URL(fileURLWithPath: inputFileOrDirectory)))
+        
         try translateFile(filePath: inputFileOrDirectory, codeWriter: codeWriter)
       } catch {
         consoleIO.writeMessage(error.localizedDescription, to: .error)

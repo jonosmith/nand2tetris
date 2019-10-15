@@ -22,7 +22,9 @@ class CodeWriter {
   var outputFileExtension = "asm"
   
   var buffer = [String]()
+  
   var customLabelCount = 0
+  var lastFunctionEncountered: String?
   
   
   // MARK: - Setup
@@ -78,6 +80,20 @@ class CodeWriter {
   
   
   // MARK: - Main Interface
+  
+  func writeInit() {
+    if debug {
+      comment("writeInit()")
+    }
+    
+    // SP = 256
+    aCommand("256")
+    cCommand(comp: "A", dest: "D")
+    registerToMemory("SP", register: "D")
+    
+    // Call init function
+    call(functionName: "Sys.init", numArgs: 0)
+  }
   
   /// Writes the assembly code that is the translation of the given arithmetic command
   func writeArithmetic(command: String) throws {
@@ -207,7 +223,7 @@ class CodeWriter {
       comment("writeLabel: label=\(label)")
     }
     
-    labelCommand(label)
+    labelCommand(createFunctionScopedLabel(label))
     
     try flushBufferToFile()
   }
@@ -217,8 +233,7 @@ class CodeWriter {
       comment("writeGoto: label=\(label)")
     }
     
-    aCommand(label)
-    cCommand(comp: "0", jump: "JMP")
+    jump(to: createFunctionScopedLabel(label))
     
     try flushBufferToFile()
   }
@@ -233,29 +248,26 @@ class CodeWriter {
     stackTo("D")
     
     // If != 0, goto given label
-    aCommand(label)
+    aCommand(createFunctionScopedLabel(label))
     cCommand(comp: "D", jump: "JNE")
     
     try flushBufferToFile()
   }
   
   func writeFunction(functionName: String, numLocals: Int) throws {
-    guard let fileName = currentFileName else {
-      fatalError("Current filename not set")
-    }
-    
-    if numLocals <= 0 {
-      throw CodeWriterError.translationError("Number of local variables must be greater than zero")
+    if numLocals < 0 {
+      throw CodeWriterError.translationError("Number of local variables must be >= 0")
     }
     
     if debug {
       comment("writeFunction: functionName=\(functionName), numLocals=\(numLocals)")
     }
     
-    let functionLabel = fileName + "." + functionName
+    // Record this new function
+    lastFunctionEncountered = functionName
     
     // Create label for function entry
-    labelCommand(functionLabel)
+    labelCommand(functionName)
     
     // Allocate local variables
     if numLocals > 0 {
@@ -277,31 +289,25 @@ class CodeWriter {
     let RETURNAddr = VirtualRegister.VM2
     
     // FRAME = LCL
-    aCommand("LCL")
-    cCommand(comp: "M", dest: "D")
-    aCommand(FRAMEAddr)
-    cCommand(comp: "D", dest: "M")
+    memoryToRegister("D", address: "LCL")
+    registerToMemory(FRAMEAddr, register: "D")
     
     // Get Return address
     aCommand("5")
     cCommand(comp: "D-A", dest: "A")
     cCommand(comp: "M", dest: "D")
-    aCommand(RETURNAddr)
-    cCommand(comp: "D", dest: "M")
+    registerToMemory(RETURNAddr, register: "D")
     
     // Get return value for this function from the top of the stack and place in correct position for the caller
     decrementSP()
     stackTo("D")
-    aCommand("ARG")
-    cCommand(comp: "M", dest: "A")
+    memoryToRegister("A", address: "ARG")
     cCommand(comp: "D", dest: "M")
     
     // Restore SP = ARG + 1
-    aCommand("ARG")
-    cCommand(comp: "M", dest: "A")
+    memoryToRegister("A", address: "ARG")
     cCommand(comp: "A+1", dest: "D")
-    aCommand("SP")
-    cCommand(comp: "D", dest: "M")
+    registerToMemory("SP", register: "D")
     
     // Restore THAT = M[FRAME - 1]
     restoreFunctionSegment(segmentName: "THAT", FRAMEAddr: FRAMEAddr, offset: 1)
@@ -316,21 +322,62 @@ class CodeWriter {
     restoreFunctionSegment(segmentName: "LCL", FRAMEAddr: FRAMEAddr, offset: 4)
     
     // Jump to the return address given by the caller
-    aCommand(RETURNAddr)
-    cCommand(comp: "M", dest: "A")
+    memoryToRegister("A", address: String(RETURNAddr))
     jump()
     
     try flushBufferToFile()
   }
   
   private func restoreFunctionSegment(segmentName: String, FRAMEAddr: String, offset: Int) {
-    aCommand(FRAMEAddr)                   // A = Address where FRAME is stored
-    cCommand(comp: "M", dest: "D")        // D = FRAME
+    memoryToRegister("D", address: FRAMEAddr)     // D = FRAME
     aCommand(String(offset))
-    cCommand(comp: "D-A", dest: "A")      // A = FRAME - offset
-    cCommand(comp: "M", dest: "D")        // D = M[FRAME - offset]
-    aCommand(segmentName)
-    cCommand(comp: "D", dest: "M")
+    cCommand(comp: "D-A", dest: "A")              // A = FRAME - offset
+    cCommand(comp: "M", dest: "D")                // D = M[FRAME - offset]
+    registerToMemory(segmentName, register: "D")
+  }
+  
+  /**
+    Call a function after arguments have been pushed to the stack already
+   */
+  func writeCall(functionName: String, numArgs: Int) throws {
+    call(functionName: functionName, numArgs: numArgs)
+    
+    try flushBufferToFile()
+  }
+  
+  private func call(functionName: String, numArgs: Int) {
+    if debug {
+      comment("call: \(functionName), numArgs: \(numArgs)")
+    }
+    
+    let returnAddress = createGloballyUniqueLabel(functionName + "_RETURN")
+    
+    // Add return address to stack
+    valueToStack(returnAddress)
+    incrementSP()
+    
+    // Add segment pointers to stack
+    for address in ["LCL", "ARG", "THIS", "THAT"] {
+      memoryToStack(address: address)
+      incrementSP()
+    }
+    
+    // Reposition ARG = SP - numArgs - 5
+    let argOffset = numArgs + 5
+    memoryToRegister("D", address: "SP")
+    aCommand(String(argOffset))
+    cCommand(comp: "D-A", dest: "D")
+    registerToMemory("ARG", register: "D")
+    
+    // Reposition LCL: M[LCL] = M[SP]
+    memoryToRegister("D", address: "SP")
+    registerToMemory("LCL", register: "D")
+    
+    // Perform jump
+    jump(to: functionName)
+    
+    // Write return address so program flow can return to execution here after running the called function
+    labelCommand(returnAddress)
   }
   
   // MARK: - Arithmetic Functions
@@ -380,7 +427,7 @@ class CodeWriter {
       comment("compare: jump=\(jump)")
     }
     
-    let labelBase = createNewLabel("COMPARE")
+    let labelBase = createGloballyUniqueLabel("COMPARE")
     let labelForResultTrue = labelBase + "_RESULT_TRUE"
     let labelForEnd = labelBase + "_COMPARE_END"
     
@@ -426,7 +473,11 @@ class CodeWriter {
   
   /// Push the given constant value to the top of the stack
   private func valueToStack(_ value: Int) {
-    aCommand(String(value))
+    valueToStack(String(value))
+  }
+  
+  private func valueToStack(_ value: String) {
+    aCommand(value)
     cCommand(comp: "A", dest: "D")
     compToStack("D")
   }
@@ -444,6 +495,7 @@ class CodeWriter {
     compToStack("D")
   }
   
+  /// Grab the value in memory at the given address and add to the current position in the stack
   private func memoryToStack(address: String) {
     // Get value from memory
     aCommand(address)
@@ -491,8 +543,7 @@ class CodeWriter {
     // Get address of destination segment and store in a temp spot
     loadPointerForSegment(segmentPointerAddress: segmentPointerAddress, index: index)    // A = M[segment] + index
     cCommand(comp: "A", dest: "D")
-    aCommand(VirtualRegister.VM1)
-    cCommand(comp: "D", dest: "M")
+    registerToMemory(VirtualRegister.VM1, register: "D")
     
     // Grab value from stack
     decrementSP()
@@ -500,8 +551,7 @@ class CodeWriter {
     incrementSP()
     
     // Get segment address again
-    aCommand(VirtualRegister.VM1)
-    cCommand(comp: "M", dest: "A")
+    memoryToRegister("A", address: VirtualRegister.VM1)
     
     // Put stack value into segment at desired index
     cCommand(comp: "D", dest: "M")
@@ -545,8 +595,7 @@ class CodeWriter {
 
   /// Load the current stack pointer value into A
   private func loadSP() {
-    aCommand("SP")
-    cCommand(comp: "M", dest: "A")
+    memoryToRegister("A", address: "SP")
   }
   
   private func loadPointerForSegment(segmentPointerAddress: String, index: Int) {
@@ -571,6 +620,15 @@ class CodeWriter {
     cCommand(comp: "M-1", dest: "M")
   }
 
+  private func memoryToRegister(_ register: String, address: String) {
+    aCommand(address)
+    cCommand(comp: "M", dest: register)
+  }
+  
+  private func registerToMemory(_ address: String, register: String) {
+    aCommand(address)
+    cCommand(comp: register, dest: "M")
+  }
   
   // MARK: - Core ASM Commands
   
@@ -606,14 +664,13 @@ class CodeWriter {
     buffer.append("(" + name + ")")
   }
   
-  private func createNewLabel(_ name: String) -> String {
-    customLabelCount += 1
-    
-    return name + "_" + String(customLabelCount)
-  }
-  
   private func comment(_ comment: String) {
     buffer.append("// " + comment)
+  }
+  
+  private func jump(to: String) {
+    aCommand(to)
+    jump()
   }
   
   private func jump() {
@@ -669,6 +726,27 @@ class CodeWriter {
   
   private func getStaticVariableName(fileName: String, index: Int) -> String {
     return fileName + "." + String(index)
+  }
+  
+  /**
+    Creates a globally unique label
+   */
+  private func createGloballyUniqueLabel(_ name: String) -> String {
+    customLabelCount += 1
+    
+    return name + "_" + String(customLabelCount)
+  }
+  
+  /**
+    Try and create a function scoped label. Returns given label if we aren't
+    currently in a function
+   */
+  private func createFunctionScopedLabel(_ label: String) -> String {
+    if let currentFunction = lastFunctionEncountered {
+      return currentFunction + "$" + label
+    } else {
+      return label
+    }
   }
   
 }
