@@ -25,9 +25,9 @@
 		FB0E4D9B22FFB4CE001B8729 /* Code.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0E4D9A22FFB4CE001B8729 /* Code.swift */; };
 		FB0E4D9D22FFB4DA001B8729 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0E4D9C22FFB4DA001B8729 /* Parser.swift */; };
 		FB0E4D9F22FFB4E7001B8729 /* SymbolTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0E4D9E22FFB4E7001B8729 /* SymbolTable.swift */; };
-		FB20B4AD23111CBB00A11D9C /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB20B4AC23111CBB00A11D9C /* ConsoleIO.swift */; };
-		FB20B4B023111CCB00A11D9C /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB20B4AE23111CCB00A11D9C /* utils.swift */; };
-		FB20B4B123111CCB00A11D9C /* FileIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB20B4AF23111CCB00A11D9C /* FileIO.swift */; };
+		FBFA764223C95500006C488A /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBFA764123C95500006C488A /* ConsoleIO.swift */; };
+		FBFA764423C95511006C488A /* FileIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBFA764323C95511006C488A /* FileIO.swift */; };
+		FBFA764623C95522006C488A /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBFA764523C95522006C488A /* utils.swift */; };
 		OBJ_23 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_9 /* main.swift */; };
 		OBJ_30 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_6 /* Package.swift */; };
 		OBJ_41 /* AssemblerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_12 /* AssemblerTests.swift */; };
@@ -58,9 +58,9 @@
 		FB0E4D9A22FFB4CE001B8729 /* Code.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Code.swift; sourceTree = "<group>"; };
 		FB0E4D9C22FFB4DA001B8729 /* Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
 		FB0E4D9E22FFB4E7001B8729 /* SymbolTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolTable.swift; sourceTree = "<group>"; };
-		FB20B4AC23111CBB00A11D9C /* ConsoleIO.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ConsoleIO.swift; path = ../../../../Common/ConsoleIO.swift; sourceTree = "<group>"; };
-		FB20B4AE23111CCB00A11D9C /* utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = utils.swift; path = ../../../../Common/utils.swift; sourceTree = "<group>"; };
-		FB20B4AF23111CCB00A11D9C /* FileIO.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = FileIO.swift; path = ../../../../Common/FileIO.swift; sourceTree = "<group>"; };
+		FBFA764123C95500006C488A /* ConsoleIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleIO.swift; sourceTree = "<group>"; };
+		FBFA764323C95511006C488A /* FileIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIO.swift; sourceTree = "<group>"; };
+		FBFA764523C95522006C488A /* utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		OBJ_12 /* AssemblerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblerTests.swift; sourceTree = "<group>"; };
 		OBJ_13 /* XCTestManifests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestManifests.swift; sourceTree = "<group>"; };
 		OBJ_17 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -99,9 +99,9 @@
 		FB0E4DA122FFBC7A001B8729 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
-				FB20B4AC23111CBB00A11D9C /* ConsoleIO.swift */,
-				FB20B4AF23111CCB00A11D9C /* FileIO.swift */,
-				FB20B4AE23111CCB00A11D9C /* utils.swift */,
+				FBFA764123C95500006C488A /* ConsoleIO.swift */,
+				FBFA764323C95511006C488A /* FileIO.swift */,
+				FBFA764523C95522006C488A /* utils.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -270,14 +270,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 0;
 			files = (
-				FB20B4AD23111CBB00A11D9C /* ConsoleIO.swift in Sources */,
 				OBJ_23 /* main.swift in Sources */,
 				FB0E4D9F22FFB4E7001B8729 /* SymbolTable.swift in Sources */,
 				FB0E4D9822FFB4B3001B8729 /* Assembler.swift in Sources */,
-				FB20B4B023111CCB00A11D9C /* utils.swift in Sources */,
 				FB0E4D9B22FFB4CE001B8729 /* Code.swift in Sources */,
+				FBFA764223C95500006C488A /* ConsoleIO.swift in Sources */,
 				FB0E4D9D22FFB4DA001B8729 /* Parser.swift in Sources */,
-				FB20B4B123111CCB00A11D9C /* FileIO.swift in Sources */,
+				FBFA764423C95511006C488A /* FileIO.swift in Sources */,
+				FBFA764623C95522006C488A /* utils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

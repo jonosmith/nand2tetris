@@ -189,7 +189,7 @@ extension VMTranslator {
 extension VMTranslator {
   /// Main flow when given all arguments from command line invocation
   func staticMode() {
-    let argCount = arguments.count
+    let argCount = CommandLine.argc
     
     guard argCount == 2 else {
       if argCount < 2 {
@@ -202,7 +202,7 @@ extension VMTranslator {
       return
     }
     
-    let inputFileOrDirectory = arguments[1]
+    let inputFileOrDirectory = CommandLine.arguments[1]
     
     var isDirectory = ObjCBool(true)
     guard fileManager.fileExists(atPath: inputFileOrDirectory, isDirectory: &isDirectory) else {
