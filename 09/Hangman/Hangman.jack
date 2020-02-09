@@ -1,0 +1,247 @@
+
+class Hangman {
+    field String word;
+    field int currentMistakes;
+    field Array usedLetters; // [false, false, true, false, false ...]
+
+    field Man man;
+    field Alphabet alphabet;
+    field WordPrinter wordPrinter;
+
+    field boolean isPlaying;
+
+    constructor Hangman new(string _word) {
+        let currentMistakes = 0;
+        let word = _word;
+
+        let isPlaying = true;
+
+        let man = Man.new(300, 50);
+        let wordPrinter = WordPrinter.new();
+        let alphabet = Alphabet.new();
+
+        do initUsedLetters();
+
+        // Start the game
+        do run();
+
+        return this;
+    }
+
+    method void initUsedLetters() {
+        var int i;
+
+        let usedLetters = Array.new(27);
+
+        let i = 0;
+        while (i < 26) {
+            let usedLetters[i] = false;
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    /** Disposes this square. */
+    method void dispose() {
+        // Deallocate children first
+        do man.dispose();
+        do alphabet.dispose();
+        do wordPrinter.dispose();
+
+        // Deallocate self
+        do Memory.deAlloc(this);
+
+        return;
+    }
+
+    method void markLetterAsUsed(int charCode) {
+        var int indexInArray;
+        let indexInArray = Utils.alphabetIndexOfChar(charCode);
+
+        let usedLetters[indexInArray] = true;
+
+        return;
+    }
+
+    method boolean isGuessCorrect(int guessCharCode) {
+        var int i;
+        var int charCode;
+        var boolean found;
+
+        let i = 0;
+        let found = false;
+        while (i < word.length()) {
+            let charCode = word.charAt(i);
+
+            if (Utils.toUpperCase(charCode) = guessCharCode) {
+                let found = true;
+            }
+
+            let i = i + 1;
+        }
+
+        return found;
+    }
+
+    method boolean hasGuessedEverything() {
+        var int i;
+        var boolean hasGuessedThisChar;
+        var int charCode;
+        var boolean result;
+        var int alphabetIndexOfChar;
+
+        let i = 0;
+        let result = true;
+        while (i < word.length()) {
+            let charCode = word.charAt(i);
+            let alphabetIndexOfChar = Utils.alphabetIndexOfChar(charCode);
+            let hasGuessedThisChar = usedLetters[alphabetIndexOfChar];
+
+            if (~(hasGuessedThisChar)) {
+                let result = false;
+            }
+
+            let i = i + 1;
+        }
+
+        return result;
+    }
+
+    method boolean hasAlreadyGuessed(int charCode) {
+        var int index;
+
+        let index = Utils.alphabetIndexOfChar(charCode);
+
+        return usedLetters[index] = true;
+    }
+
+    /** Main function for drawing the scene */
+    method void render() {
+        do Screen.clearScreen();
+
+        do alphabet.printLetters();
+        do alphabet.printUsedLettersIndicators(usedLetters);
+
+        do wordPrinter.print(word, usedLetters);
+
+        if (currentMistakes > 0) {
+            do man.drawPlatform();
+        }
+
+        if (currentMistakes > 1) {
+            do man.drawPost();
+        }
+
+        if (currentMistakes > 2) {
+            do man.drawTopBeam();
+        }
+
+        if (currentMistakes > 3) {
+            do man.drawNoose();
+        }
+
+        if (currentMistakes > 4) {
+            do man.drawHead();
+        }
+
+        if (currentMistakes > 5) {
+            do man.drawBody();
+        }
+
+        if (currentMistakes > 6) {
+            do man.drawArmLeft();
+        }
+
+        if (currentMistakes > 7) {
+            do man.drawArmRight();
+        }
+
+        if (currentMistakes > 8) {
+            do man.drawLegLeft();
+        }
+
+        if (currentMistakes > 9) {
+            do man.drawLegRight();
+        }
+
+        if (~(isPlaying)) {
+            do Output.moveCursor(10, 1);
+
+            if (hasGuessedEverything()) {
+                do Output.printString("Game over - You win!");
+            } else {
+                do Output.printString("Game over - You lose!");
+            }
+
+            do Output.moveCursor(13, 1);
+            do Output.printString("Press any key to continue");
+        }
+
+        return;
+    }
+
+    method void run() {
+        var char key;  // the key currently pressed by the user
+        var boolean exit;
+        var boolean isUsed;
+        var int charCode;
+        var boolean isCorrect;
+        var boolean exitOnNextKeypress;
+
+        // Draw starting state
+        do render();
+
+        let exit = false;
+        let exitOnNextKeypress = false;
+        while (~exit) {
+            // waits for a key to be pressed
+            while (key = 0) {
+                let key = Keyboard.keyPressed();
+            }
+
+            if (exitOnNextKeypress) {
+                let exit = true;
+            }
+
+            if (key = 27)  { let exit = true; }     // Esc key
+
+            if (Utils.isAlphaChar(key) & ~(exit)) {
+                let charCode = Utils.toUpperCase(key);
+                let isCorrect = isGuessCorrect(charCode);
+
+                if (~(hasAlreadyGuessed(charCode))) {
+                    do markLetterAsUsed(charCode);
+
+                    if (isCorrect) {
+                        if (hasGuessedEverything()) {
+                            // Finish game - won!
+                            let isPlaying = false;
+                            let exitOnNextKeypress = true;
+                        }
+                    } else {
+                        let currentMistakes = currentMistakes + 1;
+
+                        if (currentMistakes > 9) {
+                            // Finish game - lost!
+                            let isPlaying = false;
+                            let exitOnNextKeypress = true;
+                        }
+                    }
+
+                    do render();
+                }
+            }
+
+            // waits for the key to be released
+            while (~(key = 0)) {
+                let key = Keyboard.keyPressed();
+            }
+        }
+
+        do render();
+
+        return;
+   }
+}

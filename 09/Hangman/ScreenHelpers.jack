@@ -1,0 +1,12 @@
+
+/**
+ * Screen helper functions
+ *
+ * NOTES
+ * - Screen is 512 by 256 columns
+ */
+class ScreenHelpers {
+    function int addressFromXY(int x, int y) {
+        return (y * 512) + x;
+    }
+}

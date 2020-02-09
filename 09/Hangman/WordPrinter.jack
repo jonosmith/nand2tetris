@@ -1,0 +1,43 @@
+class WordPrinter {
+    field int startRow;
+    field int startCol;
+
+    constructor WordPrinter new() {
+        let startRow = 5;
+        let startCol = 1;
+
+        return this;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void print(String word, Array usedLetters) {
+        var int i;
+        var int col;
+        var int charCode;
+        var int letterIndex;
+        var boolean isUsed;
+
+        do Output.moveCursor(startRow, startCol);
+
+        let i = 0;
+        while (i < word.length()) {
+            let col = startCol + i;
+            let charCode = word.charAt(i);
+            let letterIndex = charCode - 65;
+
+            if (usedLetters[letterIndex] = true) {
+                do Output.printChar(charCode);
+            } else {
+                do Output.printString("_");
+            }
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+}

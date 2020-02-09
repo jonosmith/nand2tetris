@@ -1,0 +1,50 @@
+function Utils.isLowerCaseAlphaChar 0
+push argument 0
+push constant 96
+gt
+push argument 0
+push constant 123
+lt
+and
+return
+function Utils.isUpperCaseAlphaChar 0
+push argument 0
+push constant 64
+gt
+push argument 0
+and
+push constant 91
+lt
+return
+function Utils.isAlphaChar 2
+push argument 0
+call Utils.isLowerCaseAlphaChar 1
+pop local 0
+push argument 0
+call Utils.isUpperCaseAlphaChar 1
+pop local 1
+push local 0
+push local 1
+or
+return
+function Utils.toUpperCase 0
+push argument 0
+call Utils.isLowerCaseAlphaChar 1
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push argument 0
+push constant 32
+sub
+return
+label IF_FALSE0
+push argument 0
+return
+function Utils.alphabetIndexOfChar 1
+push argument 0
+call Utils.toUpperCase 1
+pop local 0
+push local 0
+push constant 65
+sub
+return

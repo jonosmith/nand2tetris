@@ -1,0 +1,35 @@
+
+class Utils {
+    function boolean isLowerCaseAlphaChar(int charCode) {
+        return (charCode > 96) & (charCode < 123);
+    }
+
+    function boolean isUpperCaseAlphaChar(int charCode) {
+        return charCode > 64 & charCode < 91;
+    }
+
+    function boolean isAlphaChar(int charCode) {
+        var boolean isLower;
+        var boolean isUpper;
+
+        let isLower = Utils.isLowerCaseAlphaChar(charCode);
+        let isUpper = Utils.isUpperCaseAlphaChar(charCode);
+
+        return isLower | isUpper;
+    }
+
+    function int toUpperCase(int charCode) {
+        if (Utils.isLowerCaseAlphaChar(charCode)) {
+            return charCode - 32;
+        }
+
+        return charCode;
+    }
+
+    function int alphabetIndexOfChar(int charCode) {
+        var int upperCasedChar;
+        let upperCasedChar = Utils.toUpperCase(charCode);
+
+        return (upperCasedChar - 65);
+    }
+}

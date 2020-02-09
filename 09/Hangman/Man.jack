@@ -1,0 +1,117 @@
+
+class Man {
+
+    field int x, y; // screen location of the man's top-left corner
+
+    field int totalHeight;
+    field int nooseX;
+    field int nooseLength;
+    field int postX;
+    field int platformWidth;
+    field int headRadius;
+    field int bodyHeight;
+    field int bodyStartY;
+    field int bodyEndY;
+    field int limbLength;
+    field int armsY;
+
+    /** Constructs a new man starting at the given location */
+    constructor Man new(int Ax, int Ay) {
+        let x = Ax;
+        let y = Ay;
+
+        let headRadius = 20;
+        let totalHeight = 160;
+        let nooseLength = 20;
+        let nooseX = 120;
+        let platformWidth = 60;
+        let postX = platformWidth / 2;
+        let bodyHeight = 50;
+        let bodyStartY = y + nooseLength + (headRadius * 2);
+        let bodyEndY = bodyStartY + bodyHeight;
+        let limbLength = 15;
+        let armsY = bodyStartY + 15;
+
+        return this;
+    }
+
+    /** Disposes this man */
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /** Erases the square from the screen. */
+    method void erase() {
+        do Screen.setColor(false);
+        // do Screen.drawRectangle(x, y, x + size, y + size);
+        do Screen.setColor(true);
+        return;
+    }
+
+    /** Draws the square on the screen */
+    method void drawHead() {
+        do Screen.drawCircle(x + nooseX, y + nooseLength + headRadius, headRadius);
+
+        return;
+    }
+
+    method void drawNoose() {
+        do Screen.drawLine(x + nooseX, y, x + nooseX, y + headRadius);
+
+        return;
+    }
+
+    method void drawPlatform() {
+        do Screen.drawLine(x, y + totalHeight, x + platformWidth, y + totalHeight);
+
+        return;
+    }
+
+    method void drawTopBeam() {
+        do Screen.drawLine(x + postX, y, x + nooseX, y);
+
+        return;
+    }
+
+    method void drawPost() {
+        do Screen.drawLine(x + postX, y, x + postX, y + totalHeight);
+
+        return;
+    }
+
+    method void drawBody() {
+        var int bodyStartY;
+        var int bodyEndY;
+
+        let bodyStartY = y + nooseLength + (headRadius * 2);
+        let bodyEndY = bodyStartY + bodyHeight;
+
+        do Screen.drawLine(x + nooseX, bodyStartY, x + nooseX, bodyEndY);
+        return;
+    }
+
+    method void drawArmLeft() {
+        do Screen.drawLine(x + nooseX, armsY, x + nooseX - limbLength, armsY);
+        
+        return;
+    }
+
+    method void drawArmRight() {
+        do Screen.drawLine(x + nooseX, armsY, x + nooseX + limbLength, armsY);
+        
+        return;
+    }
+
+    method void drawLegLeft() {
+        do Screen.drawLine(x + nooseX, bodyEndY, x + nooseX - limbLength, bodyEndY + 10);
+
+        return;
+    }
+
+    method void drawLegRight() {
+        do Screen.drawLine(x + nooseX, bodyEndY, x + nooseX + limbLength, bodyEndY + 10);
+
+        return;
+    }
+}

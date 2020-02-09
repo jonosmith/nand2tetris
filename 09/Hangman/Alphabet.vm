@@ -1,0 +1,98 @@
+function Alphabet.new 0
+push constant 2
+call Memory.alloc 1
+pop pointer 0
+push constant 1
+pop this 0
+push constant 1
+pop this 1
+push pointer 0
+return
+function Alphabet.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+function Alphabet.reset 0
+push argument 0
+pop pointer 0
+push constant 0
+return
+function Alphabet.printLetters 1
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label WHILE_EXP0
+push local 0
+push constant 26
+lt
+not
+if-goto WHILE_END0
+push this 1
+push this 0
+push local 0
+add
+call Output.moveCursor 2
+pop temp 0
+push constant 65
+push local 0
+add
+call Output.printChar 1
+pop temp 0
+push local 0
+push constant 1
+add
+pop local 0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return
+function Alphabet.printUsedLettersIndicators 1
+push argument 0
+pop pointer 0
+push constant 0
+pop local 0
+label WHILE_EXP0
+push local 0
+push constant 26
+lt
+not
+if-goto WHILE_END0
+push this 1
+push constant 1
+add
+push this 0
+push local 0
+add
+call Output.moveCursor 2
+pop temp 0
+push local 0
+push argument 1
+add
+pop pointer 1
+push that 0
+push constant 0
+not
+eq
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 1
+call String.new 1
+push constant 42
+call String.appendChar 2
+call Output.printString 1
+pop temp 0
+label IF_FALSE0
+push local 0
+push constant 1
+add
+pop local 0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return

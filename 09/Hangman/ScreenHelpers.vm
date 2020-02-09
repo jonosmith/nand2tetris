@@ -1,0 +1,7 @@
+function ScreenHelpers.addressFromXY 0
+push argument 1
+push constant 512
+call Math.multiply 2
+push argument 0
+add
+return

@@ -1,0 +1,51 @@
+class Alphabet {
+    field int startCol;
+    field int startRow;
+
+    constructor Alphabet new() {
+        let startCol = 1;
+        let startRow = 1;
+
+        return this;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void reset() {
+        return;
+    }
+
+    method void printLetters() {
+        var int i;
+
+        let i = 0;
+        while (i < 26) {
+            do Output.moveCursor(startRow, startCol + i);
+            do Output.printChar(65 + i);
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    method void printUsedLettersIndicators(Array usedLetters) {
+        var int i;
+
+        let i = 0;
+        while (i < 26) {
+            do Output.moveCursor(startRow + 1, startCol + i);
+
+            if (usedLetters[i] = true) {
+                do Output.printString("*");
+            }
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+}

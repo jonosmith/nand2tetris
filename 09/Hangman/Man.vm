@@ -1,0 +1,245 @@
+function Man.new 0
+push constant 13
+call Memory.alloc 1
+pop pointer 0
+push argument 0
+pop this 0
+push argument 1
+pop this 1
+push constant 20
+pop this 7
+push constant 160
+pop this 2
+push constant 20
+pop this 4
+push constant 120
+pop this 3
+push constant 60
+pop this 6
+push this 6
+push constant 2
+call Math.divide 2
+pop this 5
+push constant 50
+pop this 8
+push this 1
+push this 4
+add
+push this 7
+push constant 2
+call Math.multiply 2
+add
+pop this 9
+push this 9
+push this 8
+add
+pop this 10
+push constant 15
+pop this 11
+push this 9
+push constant 15
+add
+pop this 12
+push pointer 0
+return
+function Man.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
+function Man.erase 0
+push argument 0
+pop pointer 0
+push constant 0
+call Screen.setColor 1
+pop temp 0
+push constant 0
+not
+call Screen.setColor 1
+pop temp 0
+push constant 0
+return
+function Man.drawHead 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 1
+push this 4
+add
+push this 7
+add
+push this 7
+call Screen.drawCircle 3
+pop temp 0
+push constant 0
+return
+function Man.drawNoose 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 1
+push this 0
+push this 3
+add
+push this 1
+push this 7
+add
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawPlatform 0
+push argument 0
+pop pointer 0
+push this 0
+push this 1
+push this 2
+add
+push this 0
+push this 6
+add
+push this 1
+push this 2
+add
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawTopBeam 0
+push argument 0
+pop pointer 0
+push this 0
+push this 5
+add
+push this 1
+push this 0
+push this 3
+add
+push this 1
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawPost 0
+push argument 0
+pop pointer 0
+push this 0
+push this 5
+add
+push this 1
+push this 0
+push this 5
+add
+push this 1
+push this 2
+add
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawBody 2
+push argument 0
+pop pointer 0
+push this 1
+push this 4
+add
+push this 7
+push constant 2
+call Math.multiply 2
+add
+pop local 0
+push local 0
+push this 8
+add
+pop local 1
+push this 0
+push this 3
+add
+push local 0
+push this 0
+push this 3
+add
+push local 1
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawArmLeft 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 12
+push this 0
+push this 3
+add
+push this 11
+sub
+push this 12
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawArmRight 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 12
+push this 0
+push this 3
+add
+push this 11
+add
+push this 12
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawLegLeft 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 10
+push this 0
+push this 3
+add
+push this 11
+sub
+push this 10
+push constant 10
+add
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return
+function Man.drawLegRight 0
+push argument 0
+pop pointer 0
+push this 0
+push this 3
+add
+push this 10
+push this 0
+push this 3
+add
+push this 11
+add
+push this 10
+push constant 10
+add
+call Screen.drawLine 4
+pop temp 0
+push constant 0
+return

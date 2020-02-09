@@ -1,0 +1,19 @@
+class Main {
+    function void main() {
+        var Hangman game;
+
+        let game = Hangman.new("DOORBELL");
+        do game.dispose();
+
+        let game = Hangman.new("REPUTATION");
+        do game.dispose();
+
+        let game = Hangman.new("HEARTBEAT");
+        do game.dispose();
+
+        let game = Hangman.new("WATERMELON");
+        do game.dispose();
+
+        return;
+    }
+}
